@@ -1,0 +1,19 @@
+{
+  "ratings": {
+    "anahtar": {
+      "Beğendim": 1
+    },
+    "arkac": {
+      "Beğendim": 1
+    },
+    "catal_kapi": {
+      "Beğendim": 1
+    }
+  },
+  "daily": {
+    "date": "2026-06-16",
+    "ips": {
+      "::1": 3
+    }
+  }
+}

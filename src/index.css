@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Inter:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-steppe-dark: #1a1614;
+  --color-moon-cream: #f5f0e8;
+  --color-copper: #c2a27b;
+  --color-olive: #7B8265;
+
+  --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-steppe-dark);
+  color: var(--color-moon-cream);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.glass-card {
+  background: rgba(245, 240, 232, 0.02);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(245, 240, 232, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+.glass-card:hover {
+  box-shadow: 0 15px 35px rgba(194, 162, 123, 0.12), 0 0 15px rgba(194, 162, 123, 0.05);
+  border: 1px solid rgba(194, 162, 123, 0.3);
+}
+
+/* Custom Scrollbar for Modal */
+.modal-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(194, 162, 123, 0.3);
+  border-radius: 4px;
+}
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(194, 162, 123, 0.6);
+}
+
+/* HTML content from admin editor */
+.story-content p {
+  margin-bottom: 1.5rem;
+  line-height: 1.8;
+}
+.story-content em,
+.story-content i {
+  font-style: italic;
+}
+.story-content strong,
+.story-content b {
+  font-weight: 600;
+}
+.story-content blockquote {
+  border-left: 3px solid var(--color-copper);
+  padding-left: 1.25rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+  opacity: 0.8;
+}
+.story-content ul,
+.story-content ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+.story-content li {
+  margin-bottom: 0.5rem;
+}
+
+/* İskele kartı tren animasyonu */
+@keyframes train-scroll {
+  0% { left: 100%; }
+  100% { left: -80px; }
+}
+.animate-train {
+  animation: train-scroll 7s linear infinite;
+}
+
+/* Derviş Ali kum saati */
+@keyframes hourglass-drop {
+  0% { transform: translateY(-40px) rotate(-20deg); }
+  60% { transform: translateY(4px) rotate(3deg); }
+  80% { transform: translateY(-1px) rotate(-1deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes hourglass-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+.animate-hourglass-drop {
+  animation: hourglass-drop 1.2s ease-out both;
+}
+.animate-hourglass-sway {
+  transform-origin: top center;
+  animation: hourglass-sway 4s ease-in-out infinite;
+}
