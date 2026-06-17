@@ -25,8 +25,8 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       await adminAuth(authPassword);
       sessionStorage.setItem("yerkoyce_admin", "true");
       setAuthenticated(true);
-    } catch {
-      setAuthError("Hatalı şifre!");
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : "Bağlantı hatası!");
     } finally {
       setAuthLoading(false);
     }
