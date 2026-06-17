@@ -21,6 +21,16 @@ function saveToStorage(key: string, data: unknown) {
   } catch { /* localStorage dolu olabilir */ }
 }
 
+function formatStory(story: string): string {
+  if (/<[a-z][\s\S]*>/i.test(story)) return story;
+  return story
+    .split(/\n{2,}/)
+    .map(p => p.trim())
+    .filter(p => p.length > 0)
+    .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+    .join('\n');
+}
+
 export function WordModal({ word, onClose }: { word: WordEntry, onClose: () => void, key?: string }) {
   const [theme, setTheme] = useState<"cream" | "dark">("dark");
   const contentRef = useRef<HTMLDivElement>(null);
@@ -186,7 +196,7 @@ export function WordModal({ word, onClose }: { word: WordEntry, onClose: () => v
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9, duration: 1 }}
-            dangerouslySetInnerHTML={{ __html: word.story }}
+            dangerouslySetInnerHTML={{ __html: formatStory(word.story) }}
           />
 
           <motion.div
