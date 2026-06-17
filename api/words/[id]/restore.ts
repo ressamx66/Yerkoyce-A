@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 import { readWords, writeWords } from "../../lib/store";
+
+const redis = Redis.fromEnv();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -14,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (typeof id !== "string") return res.status(400).json({ error: "Geçersiz ID" });
 
   const { versionId } = req.body;
-  const versions = await kv.get<Record<string, unknown>[]>(`yerkoyce:versions:${id}`);
+  const versions = await redis.get<Record<string, unknown>[]>(`yerkoyce:versions:${id}`);
   const version = versions?.find((v: Record<string, unknown>) => v.id === versionId);
 
   if (!version) return res.status(404).json({ error: "Versiyon bulunamadı" });

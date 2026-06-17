@@ -1,5 +1,7 @@
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 import wordsSeed from "../data/words.json";
+
+const redis = Redis.fromEnv();
 
 const WORDS_KEY = "yerkoyce:words";
 const VOTES_KEY = "yerkoyce:votes";
@@ -18,26 +20,28 @@ export interface VotesData {
 }
 
 export async function readWords(): Promise<WordEntry[]> {
-  const cached = await kv.get<WordEntry[]>(WORDS_KEY);
+  const cached = await redis.get<WordEntry[]>(WORDS_KEY);
   if (cached) return cached;
-  await kv.set(WORDS_KEY, wordsSeed);
-  return wordsSeed as WordEntry[];
+  // Convert seed data to plain objects for Redis
+  const seed = JSON.parse(JSON.stringify(wordsSeed)) as WordEntry[];
+  await redis.set(WORDS_KEY, seed);
+  return seed;
 }
 
 export async function writeWords(words: WordEntry[]): Promise<void> {
-  await kv.set(WORDS_KEY, words);
+  await redis.set(WORDS_KEY, words);
 }
 
 export async function readVotes(): Promise<VotesData> {
-  const cached = await kv.get<VotesData>(VOTES_KEY);
+  const cached = await redis.get<VotesData>(VOTES_KEY);
   if (cached) return cached;
   const initial: VotesData = { ratings: {} };
-  await kv.set(VOTES_KEY, initial);
+  await redis.set(VOTES_KEY, initial);
   return initial;
 }
 
 export async function writeVotes(data: VotesData): Promise<void> {
-  await kv.set(VOTES_KEY, data);
+  await redis.set(VOTES_KEY, data);
 }
 
 export function todayStr(): string {

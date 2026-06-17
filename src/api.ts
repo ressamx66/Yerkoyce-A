@@ -47,3 +47,10 @@ export function restoreVersion(id: string, versionId: string) {
     body: JSON.stringify({ versionId }),
   });
 }
+
+export function adminAuth(password: string) {
+  return fetcher<{ authenticated: boolean }>("/admin/auth", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
+}

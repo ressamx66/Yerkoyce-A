@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { WordEntry } from "../types";
-import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion } from "../api";
+import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion, adminAuth } from "../api";
 import { WordEditor } from "./WordEditor";
 
 type View = "list" | "edit" | "new";
@@ -13,6 +13,55 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [versions, setVersions] = useState<{ id: string; data: WordEntry }[]>([]);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem("yerkoyce_admin") === "true");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      await adminAuth(authPassword);
+      sessionStorage.setItem("yerkoyce_admin", "true");
+      setAuthenticated(true);
+    } catch {
+      setAuthError("Hatalı şifre!");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-steppe-dark flex items-center justify-center">
+        <div className="text-center text-moon-cream/60 max-w-xs w-full px-6">
+          <p className="text-2xl mb-2">⚙️</p>
+          <p className="font-serif text-lg mb-6">Admin Paneli</p>
+          <input
+            type="password"
+            value={authPassword}
+            onChange={(e) => setAuthPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+            placeholder="Şifre"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-sm text-moon-cream text-sm text-center placeholder:text-moon-cream/30 focus:outline-none focus:border-copper/40 mb-3"
+            autoFocus
+          />
+          {authError && <p className="text-red-400/80 text-xs mb-3">{authError}</p>}
+          <button
+            onClick={handleLogin}
+            disabled={!authPassword || authLoading}
+            className="w-full px-4 py-3 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all"
+          >
+            {authLoading ? "Kontrol ediliyor..." : "Giriş"}
+          </button>
+          <button onClick={onClose} className="block mx-auto mt-6 text-[10px] text-moon-cream/30 hover:text-moon-cream/60 cursor-pointer">
+            Siteye Dön
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const load = useCallback(async () => {
     try {

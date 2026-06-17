@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 import { readWords, writeWords } from "../../lib/store";
+
+const redis = Redis.fromEnv();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -23,9 +25,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (idx === -1) return res.status(404).json({ error: "Bulunamadı" });
     const old = { ...words[idx] };
     const versionKey = `yerkoyce:versions:${id}`;
-    const versions = (await kv.get<Record<string, unknown>[]>(versionKey)) || [];
+    const versions = (await redis.get<Record<string, unknown>[]>(versionKey)) || [];
     versions.push({ id: Date.now().toString(), data: old });
-    await kv.set(versionKey, versions);
+    await redis.set(versionKey, versions);
     words[idx] = { ...words[idx], ...req.body };
     await writeWords(words);
     return res.json({ word: words[idx], previousVersion: old });
