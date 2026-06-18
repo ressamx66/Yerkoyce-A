@@ -188,6 +188,21 @@ export default async function handler(req, res) {
       return json(res, 401, { error: "Hatali sifre" });
     }
 
+    if (path.length === 2 && path[0] === "admin" && path[1] === "som" && method === "POST") {
+      const pw = process.env.ADMIN_PASSWORD;
+      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
+      if (body.password !== pw) return json(res, 401, { error: "Yetkisiz" });
+      const { amount, username } = body;
+      if (!username || typeof amount !== "number" || isNaN(amount))
+        return json(res, 400, { error: "Gecersiz komut. Ornek: /som 20 Ahmet" });
+      const user = await getUser(username);
+      if (!user) return json(res, 404, { error: "Kullanici bulunamadi: " + username });
+      const newSom = Math.max(0, (user.som || 0) + amount);
+      user.som = newSom;
+      await saveUser(username, user);
+      return json(res, 200, { username, som: newSom, eklenen: amount });
+    }
+
     // --- SOM Cüzdan ---
 
     if (path.length === 2 && path[0] === "auth" && path[1] === "register" && method === "POST") {

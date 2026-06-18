@@ -65,6 +65,13 @@ export function adminAuth(password: string) {
   });
 }
 
+export function adminSom(password: string, amount: number, username: string) {
+  return fetcher<{ username: string; som: number; eklenen: number }>("/admin/som", {
+    method: "POST",
+    body: JSON.stringify({ password, amount, username }),
+  });
+}
+
 export function sendMessage(text: string, contact?: string) {
   return fetcher<{ success: boolean }>("/messages", {
     method: "POST",

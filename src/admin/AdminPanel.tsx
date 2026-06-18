@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { WordEntry } from "../types";
-import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion, adminAuth, fetchMessages } from "../api";
+import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion, adminAuth, fetchMessages, adminSom } from "../api";
 import { WordEditor } from "./WordEditor";
 
 type View = "list" | "edit" | "new";
@@ -20,6 +20,8 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<"words" | "messages">("words");
   const [messages, setMessages] = useState<{ id: string; text: string; contact: string; date: string }[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [somCommand, setSomCommand] = useState("");
+  const [somStatus, setSomStatus] = useState("");
 
   const handleLogin = async () => {
     setAuthLoading(true);
@@ -157,6 +159,22 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     } catch { setStatus("Hata!"); }
   };
 
+  const handleSomCommand = async () => {
+    const pw = sessionStorage.getItem("yerkoyce_admin_pw");
+    if (!pw) { setSomStatus("Sifre bulunamadi"); return; }
+    const match = somCommand.trim().match(/^\/som\s+(-?\d+)\s+(\S+)$/i);
+    if (!match) { setSomStatus("Gecersiz komut. Ornek: /som 20 Ahmet"); return; }
+    const amount = parseInt(match[1]);
+    const username = match[2];
+    try {
+      const data = await adminSom(pw, amount, username);
+      setSomStatus(`${data.username}: ${data.som} § (${data.eklenen >= 0 ? "+" : ""}${data.eklenen})`);
+      setSomCommand("");
+    } catch (e) {
+      setSomStatus(e instanceof Error ? e.message : "Hata");
+    }
+  };
+
   const inputClass = "w-full px-3 py-2 bg-steppe-dark text-moon-cream border border-white/10 rounded-sm focus:border-copper/40 focus:outline-none text-sm";
 
   if (error) {
@@ -202,6 +220,25 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             Mesajlar {messages.length > 0 && `(${messages.length})`}
           </button>
         </div>
+
+        {/* SOM Komut Satırı */}
+        <div className="flex gap-2 mb-6">
+          <input
+            value={somCommand}
+            onChange={(e) => setSomCommand(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSomCommand()}
+            placeholder="/som 20 Ahmet"
+            className="flex-1 px-3 py-2 bg-steppe-dark text-moon-cream border border-white/10 rounded-sm text-sm placeholder:text-moon-cream/30 focus:outline-none focus:border-copper/40 font-mono"
+          />
+          <button
+            onClick={handleSomCommand}
+            disabled={!somCommand.trim()}
+            className="px-4 py-2 bg-copper/20 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/30 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all whitespace-nowrap"
+          >
+            Gönder
+          </button>
+        </div>
+        {somStatus && <p className="text-xs text-copper mb-4">{somStatus}</p>}
 
         {tab === "words" && view === "list" && (
           <>
