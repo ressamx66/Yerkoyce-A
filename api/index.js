@@ -189,11 +189,13 @@ function countKazanimByTip(arr, tip) {
   else if (tip === "haftalik") cutoff = new Date(yil, ay, gun - ((now.getDay() + 6) % 7)).getTime();
   else if (tip === "aylik") cutoff = new Date(yil, ay, 1).getTime();
   else cutoff = 0;
-  return normalizeKazanimlar(arr).filter((e) => e.time >= cutoff).length;
+  const entries = normalizeKazanimlar(arr).filter((e) => e.time >= cutoff);
+  return { adet: entries.length, enEski: entries.length > 0 ? Math.min(...entries.map(e => e.time)) : Infinity };
 }
 
-function countKazanimInRange(arr, start, end) {
-  return normalizeKazanimlar(arr).filter((e) => e.time >= start && e.time < end).length;
+function kazanimDetayInRange(arr, start, end) {
+  const entries = normalizeKazanimlar(arr).filter((e) => e.time >= start && e.time < end);
+  return { adet: entries.length, enEski: entries.length > 0 ? Math.min(...entries.map(e => e.time)) : Infinity };
 }
 
 async function getDunyeninZirvesi(keys, start, end) {
@@ -202,9 +204,13 @@ async function getDunyeninZirvesi(keys, start, end) {
   const users = await Promise.all(keys.map(async (k) => {
     const data = await redis.get(k);
     const name = k.replace(USERS_KEY_PREFIX, "");
-    return { username: name, adet: countKazanimInRange(data?.kazanilan, start, end) };
+    const detay = kazanimDetayInRange(data?.kazanilan, start, end);
+    return { username: name, adet: detay.adet, enEski: detay.enEski };
   }));
-  users.sort((a, b) => b.adet - a.adet);
+  users.sort((a, b) => {
+    if (b.adet !== a.adet) return b.adet - a.adet;
+    return a.enEski - b.enEski;
+  });
   if (users[0]?.adet > 0) return users[0];
   return null;
 }
@@ -479,10 +485,13 @@ export default async function handler(req, res) {
       const users = await Promise.all(keys.map(async (k) => {
         const data = await redis.get(k);
         const username = k.replace(USERS_KEY_PREFIX, "");
-        const adet = countKazanimByTip(data?.kazanilan, tip);
-        return { username, adet };
+        const detay = countKazanimByTip(data?.kazanilan, tip);
+        return { username, adet: detay.adet, enEski: detay.enEski };
       }));
-      users.sort((a, b) => b.adet - a.adet);
+      users.sort((a, b) => {
+        if (b.adet !== a.adet) return b.adet - a.adet;
+        return a.enEski - b.enEski;
+      });
       return json(res, 200, users.slice(0, 50));
     }
 
