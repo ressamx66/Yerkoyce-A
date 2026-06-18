@@ -230,7 +230,7 @@ export default async function handler(req, res) {
       const today = new Date().toISOString().slice(0, 10);
       if (user.gun !== today) {
         user.gun = today;
-        user.hak = 10;
+        user.hak = Math.min(20, 10 + (user.bonus_hak || 0));
         user.bugunku = [];
       }
       if ((user.hak ?? 10) <= 0) return json(res, 400, { error: "Bugunluk hakkınız kalmadi" });
@@ -268,7 +268,20 @@ export default async function handler(req, res) {
       if (!username) return json(res, 401, { error: "Giris yapilmamis" });
       const user = await getUser(username);
       if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
-      return json(res, 200, { username, som: user.som || 0, kazanilan: user.kazanilan || [], created_at: user.created_at });
+      const today = new Date().toISOString().slice(0, 10);
+      if (user.gun !== today) {
+        user.gun = today;
+        user.hak = Math.min(20, 10 + (user.bonus_hak || 0));
+        user.bugunku = [];
+      }
+      return json(res, 200, {
+        username,
+        som: user.som || 0,
+        hak: user.hak ?? (10 + (user.bonus_hak || 0)),
+        bonus_hak: user.bonus_hak || 0,
+        kazanilan: user.kazanilan || [],
+        created_at: user.created_at
+      });
     }
 
     if (path.length === 2 && path[0] === "som" && path[1] === "siralama" && method === "GET") {
@@ -283,6 +296,19 @@ export default async function handler(req, res) {
       }));
       users.sort((a, b) => b.som - a.som);
       return json(res, 200, users.slice(0, 50));
+    }
+
+    if (path.length === 2 && path[0] === "som" && path[1] === "yukselt" && method === "POST") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const user = await getUser(username);
+      if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
+      if ((user.som || 0) < 10) return json(res, 400, { error: "Yetersiz SOM. 10 SOM gerekli." });
+      if ((user.bonus_hak || 0) >= 10) return json(res, 400, { error: "Maksimum bonus hakka ulastiniz (10)." });
+      user.som -= 10;
+      user.bonus_hak = (user.bonus_hak || 0) + 1;
+      await saveUser(username, user);
+      return json(res, 200, { som: user.som, bonus_hak: user.bonus_hak, mesaj: "Gunluk hakkiniz 1 artti!" });
     }
 
     return json(res, 404, { error: "Not found" });

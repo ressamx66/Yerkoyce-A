@@ -107,11 +107,18 @@ export function getSonuc(token: string) {
 }
 
 export function getCuzdan(token: string) {
-  return fetcher<{ username: string; som: number; kazanilan: string[]; created_at: string }>("/som", {
+  return fetcher<{ username: string; som: number; hak: number; bonus_hak: number; kazanilan: string[]; created_at: string }>("/som", {
     headers: authHeaders(token),
   });
 }
 
 export function getSiralama() {
   return fetcher<{ username: string; som: number }[]>("/som/siralama");
+}
+
+export function yukselt(token: string) {
+  return fetcher<{ som: number; bonus_hak: number; mesaj: string }>("/som/yukselt", {
+    method: "POST",
+    headers: authHeaders(token),
+  });
 }

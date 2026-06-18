@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, LogOut } from "lucide-react";
-import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama } from "../api";
+import { X, LogOut, ArrowUp } from "lucide-react";
+import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, yukselt } from "../api";
 
 type Tab = "login" | "register" | "cuzdan" | "siralama";
 type SonucTuru = "kazanildi" | "gecersiz" | "tekrar" | null;
@@ -13,7 +13,7 @@ export function SomCuzdan() {
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(() => sessionStorage.getItem("som_token"));
   const [somUser, setSomUser] = useState<string | null>(() => sessionStorage.getItem("som_user"));
-  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; kazanilan: string[] } | null>(null);
+  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; kazanilan: string[] } | null>(null);
   const [siralama, setSiralama] = useState<{ username: string; som: number }[]>([]);
   const [deyis, setDeyis] = useState("");
   const [hata, setHata] = useState("");
@@ -107,6 +107,20 @@ export function SomCuzdan() {
     setLoading(false);
   };
 
+  const handleYukselt = async () => {
+    if (!token) return;
+    setLoading(true);
+    setHata("");
+    try {
+      const data = await yukselt(token);
+      await loadCuzdan();
+      setHata(data.mesaj);
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Hata");
+    }
+    setLoading(false);
+  };
+
   const handleLogout = () => {
     sessionStorage.removeItem("som_token");
     sessionStorage.removeItem("som_user");
@@ -130,7 +144,7 @@ export function SomCuzdan() {
 
   const sonucMesaji = (s: SonucTuru) => {
     switch (s) {
-      case "kazanildi": return { text: "✅ Geçerli deyiş! 1 SOM kazandınız.", renk: "text-green-400/90" };
+      case "kazanildi": return { text: "✅ Geçerli deyiş! 1 § kazandınız.", renk: "text-green-400/90" };
       case "gecersiz": return { text: "❌ Geçersiz deyiş", renk: "text-red-400/80" };
       case "tekrar": return { text: "⚠️ Bu deyişi zaten bugün kullandınız", renk: "text-yellow-400/80" };
       default: return { text: "", renk: "" };
@@ -142,9 +156,9 @@ export function SomCuzdan() {
       <button
         onClick={handleOpen}
         className="fixed bottom-6 right-[152px] z-40 w-14 h-14 rounded-full bg-copper/90 text-moon-cream shadow-xl hover:bg-copper hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-xl font-serif"
-        title={somUser ? `${somUser} - ${cuzdan?.som || 0} SOM` : "SOM Cüzdan"}
+        title={somUser ? `${somUser} - ${cuzdan?.som || 0} §` : "SOM Cüzdan"}
       >
-        <span className="text-lg">{somUser ? "💰" : "🏦"}</span>
+        <span className="text-lg">{somUser ? "§" : "§"}</span>
       </button>
 
       <AnimatePresence>
@@ -166,7 +180,7 @@ export function SomCuzdan() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-serif text-xl text-moon-cream">
-                  {token ? `💰 ${somUser}` : "🏦 SOM Cüzdan"}
+                  {token ? `§ ${somUser}` : "§ SOM Cüzdan"}
                 </h2>
                 <button
                   onClick={() => setOpen(false)}
@@ -193,7 +207,7 @@ export function SomCuzdan() {
                     </button>
                   </div>
                   <p className="text-xs text-moon-cream/50 leading-relaxed">
-                    Gizli deyişleri bularak SOM kazan, cüzdanında biriktir!
+                    Gizli deyişleri bularak § kazan, cüzdanında biriktir!
                   </p>
                   <input
                     value={username}
@@ -244,19 +258,30 @@ export function SomCuzdan() {
                   {tab === "cuzdan" && (
                     <>
                       <div className="flex items-center gap-3 py-3 px-4 bg-white/5 border border-white/10 rounded-sm">
-                        <span className="text-2xl">💰</span>
+                        <span className="text-2xl text-copper font-serif">§</span>
                         <div>
                           <p className="text-xs text-moon-cream/40">BAKİYE</p>
-                          <p className="text-lg font-serif text-copper">{cuzdan?.som ?? 0} SOM</p>
+                          <p className="text-lg font-serif text-copper">{cuzdan?.som ?? 0} §</p>
                         </div>
                       </div>
 
-                      {/* Kalan hak */}
-                      {hakKaldi !== null && (
+                      <div className="flex items-center justify-between gap-3 py-2 px-4 bg-white/5 border border-white/10 rounded-sm">
                         <p className="text-xs text-moon-cream/40">
-                          Kalan hakkın: <span className="text-copper">{hakKaldi}</span>/10
+                          Günlük hak: <span className="text-copper">{cuzdan?.hak ?? 0}</span>/10
+                          {(cuzdan?.bonus_hak ?? 0) > 0 && (
+                            <span className="text-moon-cream/30"> (+{cuzdan?.bonus_hak} bonus)</span>
+                          )}
                         </p>
-                      )}
+                        {cuzdan && cuzdan.bonus_hak < 10 && (
+                          <button
+                            onClick={handleYukselt}
+                            disabled={loading || (cuzdan?.som ?? 0) < 10}
+                            className="flex items-center gap-1 px-3 py-1 border border-copper/30 text-copper text-[10px] rounded-sm hover:bg-copper/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all"
+                          >
+                            <ArrowUp className="w-3 h-3" /> 10§
+                          </button>
+                        )}
+                      </div>
 
                       <div className="space-y-2">
                         <p className="text-xs text-moon-cream/40 uppercase tracking-wider">Deyiş Gir</p>
@@ -278,7 +303,6 @@ export function SomCuzdan() {
                           </button>
                         </div>
 
-                        {/* Countdown animasyonu */}
                         {countdown > 0 && (
                           <div className="py-3 text-center">
                             <div className="w-12 h-12 mx-auto border-2 border-copper/40 rounded-full flex items-center justify-center text-copper font-serif text-lg animate-pulse">
@@ -290,7 +314,6 @@ export function SomCuzdan() {
                           </div>
                         )}
 
-                        {/* Sonuç */}
                         {sonuc && (
                           <div className={`py-3 px-4 bg-white/5 border border-white/10 rounded-sm text-center text-sm ${sonucMesaji(sonuc).renk}`}>
                             {sonucMesaji(sonuc).text}
@@ -333,7 +356,7 @@ export function SomCuzdan() {
                               {u.username}
                             </span>
                           </span>
-                          <span className="text-copper font-serif">{u.som} SOM</span>
+                          <span className="text-copper font-serif">{u.som} §</span>
                         </div>
                       ))}
                     </div>
