@@ -46,9 +46,9 @@ export function SecretCode() {
           setError(false);
         }}
         className="fixed bottom-6 right-[88px] z-40 w-14 h-14 rounded-full bg-copper/90 text-moon-cream shadow-xl hover:bg-copper hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-2xl"
-        title="Dihirli Deynek"
+        title="Sihirli Deynek"
       >
-        🧙‍♂️
+        🪄
       </button>
 
       <AnimatePresence>
@@ -69,7 +69,7 @@ export function SecretCode() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-serif text-xl text-moon-cream">🧙‍♂️ Dihirli Deynek</h2>
+                <h2 className="font-serif text-xl text-moon-cream">🪄 Sihirli Deynek</h2>
                 <button
                   onClick={() => setOpen(false)}
                   className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-moon-cream/50 hover:text-moon-cream cursor-pointer"
