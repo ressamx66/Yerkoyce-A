@@ -2,6 +2,12 @@ import { WordEntry } from "./types";
 
 const BASE = "/api";
 
+function authHeaders(token?: string): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) h["Authorization"] = "Bearer " + token;
+  return h;
+}
+
 async function fetcher<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
     headers: { "Content-Type": "application/json" },
@@ -66,4 +72,36 @@ export function fetchMessages(password: string) {
   return fetcher<{ id: string; text: string; contact: string; date: string }[]>(
     `/messages?password=${encodeURIComponent(password)}`
   );
+}
+
+export function register(username: string, password: string) {
+  return fetcher<{ token: string; username: string; som: number }>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function login(username: string, password: string) {
+  return fetcher<{ token: string; username: string; som: number }>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function submitDeyis(token: string, deyis: string) {
+  return fetcher<{ som: number; deyis: string; mesaj: string }>("/som", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ deyis }),
+  });
+}
+
+export function getCuzdan(token: string) {
+  return fetcher<{ username: string; som: number; kazanilan: string[]; created_at: string }>("/som", {
+    headers: authHeaders(token),
+  });
+}
+
+export function getSiralama() {
+  return fetcher<{ username: string; som: number }[]>("/som/siralama");
 }

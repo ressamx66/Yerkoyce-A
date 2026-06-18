@@ -1,8 +1,23 @@
 import { Redis } from "@upstash/redis";
+import crypto from "crypto";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
 const WORDS_KEY = "yerkoyce:words";
 const VOTES_KEY = "yerkoyce:votes";
 const MESSAGES_KEY = "yerkoyce:messages";
+const USERS_KEY_PREFIX = "som:users:";
+const SESSIONS_KEY_PREFIX = "som:sessions:";
+const DEYISLER_KEY = "som:deyisler";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const DEYIS_LIST = readFileSync(join(__dirname, "..", "Y911_deyis.txt"), "utf-8")
+  .split(/\r?\n/)
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
 
 const SEED = [
   { "id": "anahtar", "word": "Anahtar", "quote": "Dedemin Sakladığı Anahtar\" Eskiyerköy'deki kerpiç evimizin ardındaki ahırın loş köşesinde, ineklerin gölgeleri arasına gizlenmiş, fark edilmesi neredeyse imkânsız bir kapı vardı.", "story": "<p>Eskiyerköy'deki kerpiç evimizin ardındaki ahırın loş köşesinde, ineklerin gölgeleri arasına gizlenmiş, fark edilmesi neredeyse imkânsız bir kapı vardı. Sanki yıllardır kimsenin el sürmediği, unutulmak için yapılmış bir kapı… Dedeme o kapıyı sorduğumda gözleri uzaklara dalar, dudaklarının kenarında belli belirsiz bir gülümseme belirirdi. \"O kapı sadece kendi anahtarını bekler,\" derdi. Öldüğü gün, yastığının altından bana yazılmış ve içinde anahtar olan bir zarf çıktı. \"Artık hazırsın.\"</p><p>Ellerim titreyerek anahtarı kapının paslı kilidine soktum. Döndürdüğüm an, ahırın arkasındaki dar duvar yarığı genişledi. İçinden beklediğimden çok daha büyük bir kapının bulunduğu başka bir geçide adım attım. Aynı anahtarı kullanarak bu kapıyı da açtığımda, karşımda göz alabildiğine uzanan, güneşle yıkanmış bir yayla ve onun koynunda saklanan taş bir şehir belirdi.</p>", "isUpdated": true },
@@ -63,6 +78,63 @@ async function writeMessages(msgs) {
   if (redis) await redis.set(MESSAGES_KEY, msgs);
 }
 
+async function seedDeyisler() {
+  const redis = getRedis();
+  if (!redis) return;
+  const exists = await redis.exists(DEYISLER_KEY);
+  if (!exists && DEYIS_LIST.length > 0) {
+    await redis.sadd(DEYISLER_KEY, ...DEYIS_LIST);
+  }
+}
+
+function getUserKey(username) {
+  return USERS_KEY_PREFIX + username.toLowerCase().trim();
+}
+
+async function getUser(username) {
+  const redis = getRedis();
+  if (!redis) return null;
+  try {
+    return await redis.get(getUserKey(username));
+  } catch { return null; }
+}
+
+async function saveUser(username, data) {
+  const redis = getRedis();
+  if (redis) await redis.set(getUserKey(username), data);
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+  return salt + ":" + hash;
+}
+
+function verifyPassword(password, stored) {
+  const [salt, hash] = stored.split(":");
+  const verify = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+  return hash === verify;
+}
+
+function generateToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+async function fromToken(token) {
+  const redis = getRedis();
+  if (!redis) return null;
+  try {
+    const data = await redis.get(SESSIONS_KEY_PREFIX + token);
+    return data ? data.username : null;
+  } catch { return null; }
+}
+
+async function requireAuth(req) {
+  const token = req.headers["authorization"]?.replace("Bearer ", "");
+  if (!token) return null;
+  return fromToken(token);
+}
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -83,6 +155,8 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return json(res, 200, {});
+
+  seedDeyisler().catch(() => {});
 
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const path = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
@@ -106,7 +180,84 @@ export default async function handler(req, res) {
     }
 
     if (path.length === 3 && path[0] === "words" && path[1] && path[2] === "restore" && method === "POST") {
-      return json(res, 404, { error: "Not found" });
+    if (path.length === 2 && path[0] === "admin" && path[1] === "auth" && method === "POST") {
+      const pw = process.env.ADMIN_PASSWORD;
+      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
+      if (body.password === pw) return json(res, 200, { authenticated: true });
+      return json(res, 401, { error: "Hatali sifre" });
+    }
+
+    // --- SOM Cüzdan ---
+
+    if (path.length === 2 && path[0] === "auth" && path[1] === "register" && method === "POST") {
+      const { username, password } = body;
+      if (!username || !password || username.length < 2 || password.length < 3)
+        return json(res, 400, { error: "Kullanici adi (en az 2) ve sifre (en az 3) gerekli" });
+      const existing = await getUser(username);
+      if (existing) return json(res, 409, { error: "Bu kullanici adi zaten var" });
+      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], created_at: new Date().toISOString() };
+      await saveUser(username, user);
+      const token = generateToken();
+      const redis = getRedis();
+      if (redis) await redis.set(SESSIONS_KEY_PREFIX + token, { username: username.toLowerCase().trim() }, { ex: 86400 });
+      return json(res, 200, { token, username: username.toLowerCase().trim(), som: 0 });
+    }
+
+    if (path.length === 2 && path[0] === "auth" && path[1] === "login" && method === "POST") {
+      const { username, password } = body;
+      if (!username || !password) return json(res, 400, { error: "Eksik bilgi" });
+      const user = await getUser(username);
+      if (!user) return json(res, 401, { error: "Kullanici bulunamadi" });
+      if (!verifyPassword(password, user.passwordHash)) return json(res, 401, { error: "Hatali sifre" });
+      const token = generateToken();
+      const redis = getRedis();
+      if (redis) await redis.set(SESSIONS_KEY_PREFIX + token, { username: username.toLowerCase().trim() }, { ex: 86400 });
+      return json(res, 200, { token, username: username.toLowerCase().trim(), som: user.som || 0 });
+    }
+
+    if (path.length === 1 && path[0] === "som" && method === "POST") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const { deyis } = body;
+      if (!deyis || !deyis.trim()) return json(res, 400, { error: "Deyis gerekli" });
+      const normalized = deyis.trim().toLowerCase();
+      const redis = getRedis();
+      if (!redis) return json(res, 503, { error: "Redis baglantisi yok" });
+      const valid = await redis.sismember(DEYISLER_KEY, normalized);
+      if (!valid) return json(res, 400, { error: "Gecersiz deyis" });
+      const user = await getUser(username);
+      if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
+      if ((user.kazanilan || []).includes(normalized))
+        return json(res, 400, { error: "Bu deyisi zaten kazandiniz" });
+      user.kazanilan = user.kazanilan || [];
+      user.kazanilan.push(normalized);
+      user.som = (user.som || 0) + 1;
+      await saveUser(username, user);
+      return json(res, 200, { som: user.som, deyis: normalized, mesaj: "Tebrikler! 1 SOM kazandiniz." });
+    }
+
+    if (path.length === 1 && path[0] === "som" && method === "GET") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const user = await getUser(username);
+      if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
+      return json(res, 200, { username, som: user.som || 0, kazanilan: user.kazanilan || [], created_at: user.created_at });
+    }
+
+    if (path.length === 2 && path[0] === "som" && path[1] === "siralama" && method === "GET") {
+      const redis = getRedis();
+      if (!redis) return json(res, 200, []);
+      const keys = await redis.keys(USERS_KEY_PREFIX + "*");
+      const users = await Promise.all(keys.map(async (k) => {
+        const data = await redis.get(k);
+        const username = k.replace(USERS_KEY_PREFIX, "");
+        return { username, som: data?.som || 0 };
+      }));
+      users.sort((a, b) => b.som - a.som);
+      return json(res, 200, users.slice(0, 50));
+    }
+
+    return json(res, 404, { error: "Not found" });
     }
 
     if (path.length === 2 && path[0] === "words" && method === "GET") {

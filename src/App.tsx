@@ -5,6 +5,7 @@ import { DictionaryGrid } from "./components/DictionaryGrid";
 import { WordModal } from "./components/WordModal";
 import { ContactModal } from "./components/ContactModal";
 import { SecretCode } from "./components/SecretCode";
+import { SomCuzdan } from "./components/SomCuzdan";
 import { AdminPanel } from "./admin/AdminPanel";
 import { words as staticWords } from "./data";
 import { fetchWords } from "./api";
@@ -61,6 +62,7 @@ export default function App() {
         </div>
       </footer>
 
+      <SomCuzdan />
       <SecretCode />
       <ContactModal />
 
