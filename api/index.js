@@ -498,6 +498,21 @@ export default async function handler(req, res) {
       return json(res, 200, users.slice(0, 50));
     }
 
+    if (path.length === 3 && path[0] === "som" && path[1] === "madalyalar" && method === "GET") {
+      const redis = getRedis();
+      if (!redis) return json(res, 200, []);
+      const tip = url.searchParams.get("tip") || "bronz";
+      const keys = await redis.keys(USERS_KEY_PREFIX + "*");
+      const users = await Promise.all(keys.map(async (k) => {
+        const data = await redis.get(k);
+        const username = k.replace(USERS_KEY_PREFIX, "");
+        const m = data?.madalyalar || {};
+        return { username, adet: m[tip] || 0 };
+      }));
+      users.sort((a, b) => b.adet - a.adet);
+      return json(res, 200, users.slice(0, 50));
+    }
+
     if (path.length === 2 && path[0] === "som" && path[1] === "yukselt" && method === "POST") {
       const username = await requireAuth(req);
       if (!username) return json(res, 401, { error: "Giris yapilmamis" });

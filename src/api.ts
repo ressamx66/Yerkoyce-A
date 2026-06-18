@@ -130,6 +130,11 @@ export function getSiralama(tip?: string) {
   return fetcher<{ username: string; adet: number }[]>(`/som/siralama${q}`);
 }
 
+export function getMadalyonlar(tip?: string) {
+  const q = tip ? `?tip=${tip}` : "";
+  return fetcher<{ username: string; adet: number }[]>(`/som/madalyalar${q}`);
+}
+
 export function yukselt(token: string) {
   return fetcher<{ som: number; bonus_hak: number; mesaj: string }>("/som/yukselt", {
     method: "POST",

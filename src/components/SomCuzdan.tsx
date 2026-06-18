@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, LogOut, ArrowUp } from "lucide-react";
-import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, yukselt, yukseltTimer } from "../api";
+import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, getMadalyonlar, yukselt, yukseltTimer } from "../api";
 
-type Tab = "login" | "register" | "cuzdan" | "siralama";
+type Tab = "login" | "register" | "cuzdan" | "siralama" | "madalya";
 type SonucTuru = "kazanildi" | "gecersiz" | null;
 
 export function SomCuzdan() {
@@ -17,6 +17,8 @@ export function SomCuzdan() {
   const [siralama, setSiralama] = useState<{ username: string; adet: number }[]>([]);
   const [siralamaTip, setSiralamaTip] = useState("genel");
   const [showInfo, setShowInfo] = useState(false);
+  const [madalyalarListe, setMadalyonlarListe] = useState<{ username: string; adet: number }[]>([]);
+  const [madalyaTip, setMadalyaTip] = useState("bronz");
   const [deyis, setDeyis] = useState("");
   const [hata, setHata] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,8 +39,11 @@ export function SomCuzdan() {
   const loadSiralama = async (tip?: string) => {
     try { setSiralama(await getSiralama(tip || siralamaTip)); } catch {}
   };
+  const loadMadalyonlar = async (tip?: string) => {
+    try { setMadalyonlarListe(await getMadalyonlar(tip || madalyaTip)); } catch {}
+  };
 
-  useEffect(() => { if (open && token) { loadCuzdan(); loadSiralama(siralamaTip); } }, [open, token, siralamaTip]);
+  useEffect(() => { if (open && token) { loadCuzdan(); loadSiralama(siralamaTip); loadMadalyonlar(madalyaTip); } }, [open, token, siralamaTip, madalyaTip]);
 
   useEffect(() => {
     return () => clearInterval(timerRef.current);
@@ -263,6 +268,12 @@ export function SomCuzdan() {
                       Sıralama
                     </button>
                     <button
+                      onClick={() => { setTab("madalya"); loadMadalyonlar(madalyaTip); }}
+                      className={`text-xs tracking-wider cursor-pointer ${tab === "madalya" ? "text-copper" : "text-moon-cream/40"}`}
+                    >
+                      🏅 Madalya
+                    </button>
+                    <button
                       onClick={handleLogout}
                       className="ml-auto text-xs text-moon-cream/30 hover:text-moon-cream/60 flex items-center gap-1 cursor-pointer"
                     >
@@ -278,6 +289,21 @@ export function SomCuzdan() {
                           <p className="text-xs text-moon-cream/40">BAKİYE</p>
                           <p className="text-lg font-serif text-copper">{cuzdan?.som ?? 0} §</p>
                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-5 py-2 px-4 bg-white/5 border border-white/10 rounded-sm">
+                        <span className="flex items-center gap-1.5 text-sm" title="Altın Madalya">
+                          <span className="text-lg">🥇</span>
+                          <span className="text-copper font-serif">{cuzdan?.madalyalar?.altin ?? 0}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 text-sm" title="Gümüş Madalya">
+                          <span className="text-lg">🥈</span>
+                          <span className="text-copper font-serif">{cuzdan?.madalyalar?.gumus ?? 0}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 text-sm" title="Bronz Madalya">
+                          <span className="text-lg">🥉</span>
+                          <span className="text-copper font-serif">{cuzdan?.madalyalar?.bronz ?? 0}</span>
+                        </span>
                       </div>
 
                       <div className="flex items-center justify-between gap-3 py-2 px-4 bg-white/5 border border-white/10 rounded-sm">
@@ -313,27 +339,6 @@ export function SomCuzdan() {
                           >
                             <ArrowUp className="w-3 h-3" /> 10§ -5%
                           </button>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-4 py-2 px-4 bg-white/5 border border-white/10 rounded-sm">
-                        {(cuzdan?.madalyalar?.altin ?? 0) > 0 && (
-                          <span className="flex items-center gap-1 text-xs" title="Altın Madalya">
-                            <span className="text-yellow-400">●</span> {cuzdan?.madalyalar.altin}
-                          </span>
-                        )}
-                        {(cuzdan?.madalyalar?.gumus ?? 0) > 0 && (
-                          <span className="flex items-center gap-1 text-xs" title="Gümüş Madalya">
-                            <span className="text-gray-300">●</span> {cuzdan?.madalyalar.gumus}
-                          </span>
-                        )}
-                        {(cuzdan?.madalyalar?.bronz ?? 0) > 0 && (
-                          <span className="flex items-center gap-1 text-xs" title="Bronz Madalya">
-                            <span className="text-amber-700">●</span> {cuzdan?.madalyalar.bronz}
-                          </span>
-                        )}
-                        {(cuzdan?.madalyalar?.bronz ?? 0) + (cuzdan?.madalyalar?.gumus ?? 0) + (cuzdan?.madalyalar?.altin ?? 0) === 0 && (
-                          <span className="text-xs text-moon-cream/30">Henüz madalya yok</span>
                         )}
                       </div>
 
@@ -445,6 +450,45 @@ export function SomCuzdan() {
                               </span>
                             </span>
                             <span className="text-copper font-serif">{u.adet} deyiş</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {tab === "madalya" && (
+                    <div className="space-y-2">
+                      <div className="flex gap-2 border-b border-white/10 pb-2">
+                        {[
+                          { key: "bronz", label: "🥉 Bronz" },
+                          { key: "gumus", label: "🥈 Gümüş" },
+                          { key: "altin", label: "🥇 Altın" },
+                        ].map((t) => (
+                          <button
+                            key={t.key}
+                            onClick={() => { setMadalyaTip(t.key); loadMadalyonlar(t.key); }}
+                            className={`text-[10px] tracking-wider cursor-pointer pb-1 ${madalyaTip === t.key ? "text-copper border-b-2 border-copper" : "text-moon-cream/40"}`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="space-y-1 max-h-52 overflow-y-auto">
+                        {madalyalarListe.length === 0 && (
+                          <p className="text-xs text-moon-cream/40">Henüz madalya yok.</p>
+                        )}
+                        {madalyalarListe.map((u, i) => (
+                          <div
+                            key={u.username}
+                            className="flex items-center justify-between px-3 py-2 bg-white/5 border border-white/10 rounded-sm text-sm"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-xs text-moon-cream/40 w-5">{i + 1}.</span>
+                              <span className={u.username === somUser ? "text-copper" : "text-moon-cream/80"}>
+                                {u.username}
+                              </span>
+                            </span>
+                            <span className="text-copper font-serif">{u.adet} {madalyaTip === "altin" ? "🥇" : madalyaTip === "gumus" ? "🥈" : "🥉"}</span>
                           </div>
                         ))}
                       </div>
