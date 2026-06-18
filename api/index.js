@@ -186,6 +186,7 @@ function checkRainDailyReset(user) {
   const today = todayStr();
   if (user.yagmur_gun !== today) {
     user.yaprak_sayaci = 0;
+    user.kitap_sayaci = 0;
     user.saat_indirim = 0;
     user.yagmur_gun = today;
   }
@@ -410,7 +411,7 @@ export default async function handler(req, res) {
         return json(res, 400, { error: "Kullanici adi (en az 2) ve sifre (en az 3) gerekli" });
       const existing = await getUser(username);
       if (existing) return json(res, 409, { error: "Bu kullanici adi zaten var" });
-      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], madalyalar: { bronz: 0, gumus: 0, altin: 0 }, son_madalya: {}, created_at: new Date().toISOString(), yaprak_sayaci: 0, saat_indirim: 0, yagmur_gun: "" };
+      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], madalyalar: { bronz: 0, gumus: 0, altin: 0 }, son_madalya: {}, created_at: new Date().toISOString(), yaprak_sayaci: 0, kitap_sayaci: 0, saat_indirim: 0, yagmur_gun: "" };
       await saveUser(username, user);
       const token = generateToken();
       const redis = getRedis();
@@ -506,6 +507,7 @@ export default async function handler(req, res) {
         kazanilan: normalizeKazanimlar(user.kazanilan),
         madalyalar,
         yaprak_sayaci: user.yaprak_sayaci || 0,
+        kitap_sayaci: user.kitap_sayaci || 0,
         saat_indirim: user.saat_indirim || 0,
         created_at: user.created_at
       });
@@ -599,7 +601,7 @@ export default async function handler(req, res) {
       const username = await requireAuth(req);
       if (!username) return json(res, 401, { error: "Giris yapilmamis" });
       const { tur } = body;
-      if (!["som", "deyis", "yaprak", "saat"].includes(tur))
+      if (!["som", "kitap", "yaprak", "saat"].includes(tur))
         return json(res, 400, { error: "Gecersiz tur" });
       const redis = getRedis();
       if (!redis) return json(res, 503, { error: "Redis baglantisi yok" });
@@ -615,9 +617,16 @@ export default async function handler(req, res) {
       if (tur === "som") {
         user.som = (user.som || 0) + 0.01;
         extra = { artis: 0.01 };
-      } else if (tur === "deyis") {
-        const idx = Math.floor(Math.random() * DEYIS_LIST.length);
-        extra = { deyis: DEYIS_LIST[idx] };
+      } else if (tur === "kitap") {
+        user.kitap_sayaci = (user.kitap_sayaci || 0) + 1;
+        let deyisKazandi = false;
+        let deyis = "";
+        if (user.kitap_sayaci % 10 === 0) {
+          const idx = Math.floor(Math.random() * DEYIS_LIST.length);
+          deyis = DEYIS_LIST[idx];
+          deyisKazandi = true;
+        }
+        extra = { kitap_sayaci: user.kitap_sayaci, deyis_kazandi: deyisKazandi, deyis };
       } else if (tur === "yaprak") {
         user.yaprak_sayaci = (user.yaprak_sayaci || 0) + 1;
         let hakKazandi = false;

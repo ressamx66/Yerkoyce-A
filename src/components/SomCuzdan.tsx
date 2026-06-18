@@ -14,7 +14,7 @@ export function SomCuzdan() {
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(() => sessionStorage.getItem("som_token"));
   const [somUser, setSomUser] = useState<string | null>(() => sessionStorage.getItem("som_user"));
-  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; saat_indirim: number } | null>(null);
+  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; kitap_sayaci: number; saat_indirim: number } | null>(null);
   const [siralama, setSiralama] = useState<{ username: string; adet: number }[]>([]);
   const [siralamaTip, setSiralamaTip] = useState("genel");
   const [showInfo, setShowInfo] = useState(false);
@@ -143,12 +143,13 @@ export function SomCuzdan() {
     setLoading(false);
   };
 
-  const handleYagmurUpdate = (data: { som?: number; hak?: number; yaprak_sayaci?: number; saat_indirim?: number }) => {
+  const handleYagmurUpdate = (data: { som?: number; hak?: number; yaprak_sayaci?: number; kitap_sayaci?: number; saat_indirim?: number }) => {
     setCuzdan(prev => prev ? {
       ...prev,
       som: data.som ?? prev.som,
       hak: data.hak ?? prev.hak,
       yaprak_sayaci: data.yaprak_sayaci ?? prev.yaprak_sayaci,
+      kitap_sayaci: data.kitap_sayaci ?? prev.kitap_sayaci,
       saat_indirim: data.saat_indirim ?? prev.saat_indirim,
     } : prev);
   };
@@ -550,6 +551,7 @@ export function SomCuzdan() {
                           som={cuzdan.som}
                           hak={cuzdan.hak}
                           yaprakSayaci={cuzdan.yaprak_sayaci || 0}
+                          kitapSayaci={cuzdan.kitap_sayaci || 0}
                           saatIndirim={cuzdan.saat_indirim || 0}
                           onUpdate={handleYagmurUpdate}
                         />
