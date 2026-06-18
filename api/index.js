@@ -192,61 +192,82 @@ function countKazanimByTip(arr, tip) {
   return normalizeKazanimlar(arr).filter((e) => e.time >= cutoff).length;
 }
 
+function countKazanimInRange(arr, start, end) {
+  return normalizeKazanimlar(arr).filter((e) => e.time >= start && e.time < end).length;
+}
+
+async function getDunyeninZirvesi(keys, start, end) {
+  const redis = getRedis();
+  if (!redis) return null;
+  const users = await Promise.all(keys.map(async (k) => {
+    const data = await redis.get(k);
+    const name = k.replace(USERS_KEY_PREFIX, "");
+    return { username: name, adet: countKazanimInRange(data?.kazanilan, start, end) };
+  }));
+  users.sort((a, b) => b.adet - a.adet);
+  if (users[0]?.adet > 0) return users[0];
+  return null;
+}
+
 async function checkMedals(username, user) {
   const redis = getRedis();
   if (!redis) return user.madalyalar || { bronz: 0, gumus: 0, altin: 0 };
+
+  const madalyalar = user.madalyalar || { bronz: 0, gumus: 0, altin: 0 };
+  const son = user.son_madalya || {};
   const keys = await redis.keys(USERS_KEY_PREFIX + "*");
-  const allUsers = await Promise.all(keys.map(async (k) => {
-    const data = await redis.get(k);
-    const name = k.replace(USERS_KEY_PREFIX, "");
-    return { username: name, adet: countKazanimByTip(data?.kazanilan, "gunluk") };
-  }));
-  allUsers.sort((a, b) => b.adet - a.adet);
 
   const now = new Date();
   const yil = now.getFullYear();
   const ay = now.getMonth();
   const gun = now.getDate();
 
+  const todayStart = new Date(yil, ay, gun).getTime();
   const gunKey = `${yil}-${String(ay + 1).padStart(2, "0")}-${String(gun).padStart(2, "0")}`;
+
   const haftaGun = gun - ((now.getDay() + 6) % 7);
-  const haftaKey = `${yil}-${String(ay + 1).padStart(2, "0")}-${String(haftaGun).padStart(2, "0")}`;
+  const weekStart = new Date(yil, ay, haftaGun).getTime();
+  const mondayStr = `${yil}-${String(ay + 1).padStart(2, "0")}-${String(haftaGun).padStart(2, "0")}`;
+
+  const monthStart = new Date(yil, ay, 1).getTime();
   const ayKey = `${yil}-${String(ay + 1).padStart(2, "0")}`;
 
-  const madalyalar = user.madalyalar || { bronz: 0, gumus: 0, altin: 0 };
-  const son = user.son_madalya || {};
-
-  if (allUsers[0]?.username === username && allUsers[0]?.adet > 0) {
-    if (son.gun !== gunKey) {
-      madalyalar.bronz = (madalyalar.bronz || 0) + 1;
-      son.gun = gunKey;
+  /* BRONZ — her tamamlanan gün */
+  if (son.gun !== gunKey) {
+    const lastChecked = son.gun ? new Date(son.gun + "T00:00:00") : null;
+    const checkBaslangic = lastChecked ? new Date(lastChecked.getTime() + 86400000) : new Date(yil, ay, gun - 1);
+    let cursor = new Date(checkBaslangic);
+    const yesterday = new Date(yil, ay, gun - 1);
+    while (cursor <= yesterday) {
+      const dayStart = cursor.getTime();
+      const dayEnd = dayStart + 86400000;
+      const winner = await getDunyeninZirvesi(keys, dayStart, dayEnd);
+      if (winner && winner.username === username) {
+        madalyalar.bronz = (madalyalar.bronz || 0) + 1;
+      }
+      cursor = new Date(cursor.getTime() + 86400000);
     }
+    son.gun = gunKey;
   }
 
-  const haftaUsers = await Promise.all(keys.map(async (k) => {
-    const data = await redis.get(k);
-    const name = k.replace(USERS_KEY_PREFIX, "");
-    return { username: name, adet: countKazanimByTip(data?.kazanilan, "haftalik") };
-  }));
-  haftaUsers.sort((a, b) => b.adet - a.adet);
-  if (haftaUsers[0]?.username === username && haftaUsers[0]?.adet > 0) {
-    if (son.hafta !== haftaKey) {
+  /* GÜMÜŞ — bir önceki tam hafta */
+  if (son.hafta !== mondayStr) {
+    const lastWeekStart = weekStart - 604800000;
+    const winner = await getDunyeninZirvesi(keys, lastWeekStart, weekStart);
+    if (winner && winner.username === username) {
       madalyalar.gumus = (madalyalar.gumus || 0) + 1;
-      son.hafta = haftaKey;
     }
+    son.hafta = mondayStr;
   }
 
-  const ayUsers = await Promise.all(keys.map(async (k) => {
-    const data = await redis.get(k);
-    const name = k.replace(USERS_KEY_PREFIX, "");
-    return { username: name, adet: countKazanimByTip(data?.kazanilan, "aylik") };
-  }));
-  ayUsers.sort((a, b) => b.adet - a.adet);
-  if (ayUsers[0]?.username === username && ayUsers[0]?.adet > 0) {
-    if (son.ay !== ayKey) {
+  /* ALTIN — bir önceki tam ay */
+  if (son.ay !== ayKey) {
+    const lastMonthStart = new Date(yil, ay - 1, 1).getTime();
+    const winner = await getDunyeninZirvesi(keys, lastMonthStart, monthStart);
+    if (winner && winner.username === username) {
       madalyalar.altin = (madalyalar.altin || 0) + 1;
-      son.ay = ayKey;
     }
+    son.ay = ayKey;
   }
 
   user.madalyalar = madalyalar;
