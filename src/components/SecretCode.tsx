@@ -61,7 +61,7 @@ export function SecretCode() {
             onClick={() => setOpen(false)}
           >
             <motion.div
-              className="bg-[#1f1b19] border border-white/10 rounded-xl w-full max-w-lg p-6 shadow-2xl"
+              className="bg-[#1f1b19] border border-white/10 rounded-xl w-full max-w-5xl p-8 shadow-2xl"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -69,7 +69,7 @@ export function SecretCode() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-serif text-xl text-moon-cream">🪄 Sihirli Deynek</h2>
+                <h2 className="font-serif text-xl text-moon-cream">Terzi Mehmet Amca</h2>
                 <button
                   onClick={() => setOpen(false)}
                   className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-moon-cream/50 hover:text-moon-cream cursor-pointer"
