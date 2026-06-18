@@ -320,28 +320,22 @@ export function SomCuzdan() {
                         </span>
                       </div>
 
-                      {(cuzdan?.madalyalar?.bronz ?? 0) >= 10 || (cuzdan?.madalyalar?.gumus ?? 0) >= 10 ? (
-                        <div className="flex gap-2">
-                          {(cuzdan?.madalyalar?.bronz ?? 0) >= 10 && (
-                            <button
-                              onClick={() => handleTakas("bronz")}
-                              disabled={loading}
-                              className="flex-1 py-1.5 border border-amber-700/40 text-amber-700 text-[10px] rounded-sm hover:bg-amber-700/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all text-center"
-                            >
-                              10 🥉 → 1 🥈
-                            </button>
-                          )}
-                          {(cuzdan?.madalyalar?.gumus ?? 0) >= 10 && (
-                            <button
-                              onClick={() => handleTakas("gumus")}
-                              disabled={loading}
-                              className="flex-1 py-1.5 border border-gray-400/40 text-gray-300 text-[10px] rounded-sm hover:bg-gray-400/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all text-center"
-                            >
-                              10 🥈 → 1 🥇
-                            </button>
-                          )}
-                        </div>
-                      ) : null}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleTakas("bronz")}
+                          disabled={loading || (cuzdan?.madalyalar?.bronz ?? 0) < 10}
+                          className="flex-1 py-2 border border-amber-700/40 text-amber-700 text-xs rounded-sm hover:bg-amber-700/20 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all text-center"
+                        >
+                          10 🥉 → 1 🥈
+                        </button>
+                        <button
+                          onClick={() => handleTakas("gumus")}
+                          disabled={loading || (cuzdan?.madalyalar?.gumus ?? 0) < 10}
+                          className="flex-1 py-2 border border-gray-400/40 text-gray-300 text-xs rounded-sm hover:bg-gray-400/20 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all text-center"
+                        >
+                          10 🥈 → 1 🥇
+                        </button>
+                      </div>
 
                       <div className="flex items-center justify-between gap-3 py-2 px-4 bg-white/5 border border-white/10 rounded-sm">
                         <p className="text-xs text-moon-cream/40">
