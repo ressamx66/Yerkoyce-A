@@ -451,7 +451,7 @@ export default async function handler(req, res) {
         user.kazanilan = user.kazanilan || [];
         user.kazanilan.push({ deyis: normalized, time: Date.now() });
         user.som = (user.som || 0) + 1;
-        await redis.zadd(SON_DEYISLER_KEY, Date.now(), normalized);
+        await redis.zadd(SON_DEYISLER_KEY, { score: Date.now(), member: normalized });
         await redis.zremrangebyscore(SON_DEYISLER_KEY, 0, Date.now() - YEDI_GUN_MS);
       }
       user.pending = { deyis: normalized, sonuc, timestamp: Date.now() };
