@@ -104,7 +104,7 @@ export function SecretCode() {
                 </div>
               ) : (
                 <div
-                  className="prose prose-sm prose-invert max-w-none space-y-3 text-sm text-moon-cream/90 leading-relaxed [&_p]:mb-4 [&_i]:text-copper/70"
+                  className="prose prose-sm prose-invert max-w-none space-y-3 text-sm text-moon-cream/90 leading-relaxed [&_p]:mb-4 [&_i]:text-copper/70 max-h-[55vh] overflow-y-auto pr-1"
                   dangerouslySetInnerHTML={{ __html: TERZI_STORY }}
                 />
               )}
