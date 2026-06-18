@@ -4,7 +4,7 @@ import { X, LogOut, ArrowUp } from "lucide-react";
 import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, yukselt, yukseltTimer } from "../api";
 
 type Tab = "login" | "register" | "cuzdan" | "siralama";
-type SonucTuru = "kazanildi" | "gecersiz" | "tekrar" | null;
+type SonucTuru = "kazanildi" | "gecersiz" | null;
 
 export function SomCuzdan() {
   const [open, setOpen] = useState(false);
@@ -161,8 +161,7 @@ export function SomCuzdan() {
   const sonucMesaji = (s: SonucTuru) => {
     switch (s) {
       case "kazanildi": return { text: "✅ Geçerli deyiş! 1 § kazandınız.", renk: "text-green-400/90" };
-      case "gecersiz": return { text: "❌ Geçersiz deyiş", renk: "text-red-400/80" };
-      case "tekrar": return { text: "⚠️ Bu deyişi zaten bugün kullandınız", renk: "text-yellow-400/80" };
+      case "gecersiz": return { text: "❌ Geçersiz deyiş (Y911 listesinde yok veya son 7 gün içinde girilmiş)", renk: "text-red-400/80" };
       default: return { text: "", renk: "" };
     }
   };
@@ -451,9 +450,12 @@ export function SomCuzdan() {
                       </div>
                     </div>
                   )}
+                  </div>
+                )}
+                <div className="mt-4 pt-3 border-t border-white/10 text-[10px] text-moon-cream/30 leading-relaxed">
+                  <p><b className="text-moon-cream/50">Kurallar:</b> Her deyiş Y911 listesinde olmalıdır. Son 7 gün içinde başkası tarafından girilmiş deyişler geçersiz sayılır. Günlük 10 hak (max 20). Geri sayım 5dk (10§ ile %5 kısalır, max 10). Madalyalar dönem sonunda birinciye verilir: gün→bronz, hafta→gümüş, ay→altın.</p>
                 </div>
-              )}
-            </motion.div>
+              </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

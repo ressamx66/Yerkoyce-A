@@ -10,6 +10,8 @@ const MESSAGES_KEY = "yerkoyce:messages";
 const USERS_KEY_PREFIX = "som:users:";
 const SESSIONS_KEY_PREFIX = "som:sessions:";
 const DEYISLER_KEY = "som:deyisler";
+const SON_DEYISLER_KEY = "som:sonDeyisler";
+const YEDI_GUN_MS = 7 * 86400000;
 const LOGS_KEY = "yerkoyce:logs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -418,21 +420,23 @@ export default async function handler(req, res) {
       if (user.gun !== today) {
         user.gun = today;
         user.hak = Math.min(20, 10 + (user.bonus_hak || 0));
-        user.bugunku = [];
       }
       if ((user.hak ?? 10) <= 0) return json(res, 400, { error: "Bugunluk hakkınız kalmadi" });
       const valid = await redis.sismember(DEYISLER_KEY, normalized);
       let sonuc;
       if (!valid) sonuc = "gecersiz";
-      else if ((user.bugunku || []).includes(normalized)) sonuc = "tekrar";
-      else sonuc = "kazanildi";
+      else {
+        const onceki = await redis.zscore(SON_DEYISLER_KEY, normalized);
+        if (onceki !== null && Date.now() - onceki < YEDI_GUN_MS) sonuc = "gecersiz";
+        else sonuc = "kazanildi";
+      }
       user.hak = (user.hak ?? 10) - 1;
-      user.bugunku = user.bugunku || [];
-      user.bugunku.push(normalized);
       if (sonuc === "kazanildi") {
         user.kazanilan = user.kazanilan || [];
         user.kazanilan.push({ deyis: normalized, time: Date.now() });
         user.som = (user.som || 0) + 1;
+        await redis.zadd(SON_DEYISLER_KEY, Date.now(), normalized);
+        await redis.zremrangebyscore(SON_DEYISLER_KEY, 0, Date.now() - YEDI_GUN_MS);
       }
       user.pending = { deyis: normalized, sonuc, timestamp: Date.now() };
       await saveUser(username, user);
@@ -460,7 +464,6 @@ export default async function handler(req, res) {
       if (user.gun !== today) {
         user.gun = today;
         user.hak = Math.min(20, 10 + (user.bonus_hak || 0));
-        user.bugunku = [];
       }
       const madalyalar = await checkMedals(username, user);
       return json(res, 200, {
