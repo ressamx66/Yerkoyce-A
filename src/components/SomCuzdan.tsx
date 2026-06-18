@@ -13,7 +13,7 @@ export function SomCuzdan() {
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(() => sessionStorage.getItem("som_token"));
   const [somUser, setSomUser] = useState<string | null>(() => sessionStorage.getItem("som_user"));
-  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: string[] } | null>(null);
+  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number } } | null>(null);
   const [siralama, setSiralama] = useState<{ username: string; adet: number }[]>([]);
   const [siralamaTip, setSiralamaTip] = useState("genel");
   const [showInfo, setShowInfo] = useState(false);
@@ -314,6 +314,27 @@ export function SomCuzdan() {
                           >
                             <ArrowUp className="w-3 h-3" /> 10§ -5%
                           </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4 py-2 px-4 bg-white/5 border border-white/10 rounded-sm">
+                        {(cuzdan?.madalyalar?.altin ?? 0) > 0 && (
+                          <span className="flex items-center gap-1 text-xs" title="Altın Madalya">
+                            <span className="text-yellow-400">●</span> {cuzdan?.madalyalar.altin}
+                          </span>
+                        )}
+                        {(cuzdan?.madalyalar?.gumus ?? 0) > 0 && (
+                          <span className="flex items-center gap-1 text-xs" title="Gümüş Madalya">
+                            <span className="text-gray-300">●</span> {cuzdan?.madalyalar.gumus}
+                          </span>
+                        )}
+                        {(cuzdan?.madalyalar?.bronz ?? 0) > 0 && (
+                          <span className="flex items-center gap-1 text-xs" title="Bronz Madalya">
+                            <span className="text-amber-700">●</span> {cuzdan?.madalyalar.bronz}
+                          </span>
+                        )}
+                        {(cuzdan?.madalyalar?.bronz ?? 0) + (cuzdan?.madalyalar?.gumus ?? 0) + (cuzdan?.madalyalar?.altin ?? 0) === 0 && (
+                          <span className="text-xs text-moon-cream/30">Henüz madalya yok</span>
                         )}
                       </div>
 

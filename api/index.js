@@ -192,6 +192,69 @@ function countKazanimByTip(arr, tip) {
   return normalizeKazanimlar(arr).filter((e) => e.time >= cutoff).length;
 }
 
+async function checkMedals(username, user) {
+  const redis = getRedis();
+  if (!redis) return user.madalyalar || { bronz: 0, gumus: 0, altin: 0 };
+  const keys = await redis.keys(USERS_KEY_PREFIX + "*");
+  const allUsers = await Promise.all(keys.map(async (k) => {
+    const data = await redis.get(k);
+    const name = k.replace(USERS_KEY_PREFIX, "");
+    return { username: name, adet: countKazanimByTip(data?.kazanilan, "gunluk") };
+  }));
+  allUsers.sort((a, b) => b.adet - a.adet);
+
+  const now = new Date();
+  const yil = now.getFullYear();
+  const ay = now.getMonth();
+  const gun = now.getDate();
+
+  const gunKey = `${yil}-${String(ay + 1).padStart(2, "0")}-${String(gun).padStart(2, "0")}`;
+  const haftaGun = gun - ((now.getDay() + 6) % 7);
+  const haftaKey = `${yil}-${String(ay + 1).padStart(2, "0")}-${String(haftaGun).padStart(2, "0")}`;
+  const ayKey = `${yil}-${String(ay + 1).padStart(2, "0")}`;
+
+  const madalyalar = user.madalyalar || { bronz: 0, gumus: 0, altin: 0 };
+  const son = user.son_madalya || {};
+
+  if (allUsers[0]?.username === username && allUsers[0]?.adet > 0) {
+    if (son.gun !== gunKey) {
+      madalyalar.bronz = (madalyalar.bronz || 0) + 1;
+      son.gun = gunKey;
+    }
+  }
+
+  const haftaUsers = await Promise.all(keys.map(async (k) => {
+    const data = await redis.get(k);
+    const name = k.replace(USERS_KEY_PREFIX, "");
+    return { username: name, adet: countKazanimByTip(data?.kazanilan, "haftalik") };
+  }));
+  haftaUsers.sort((a, b) => b.adet - a.adet);
+  if (haftaUsers[0]?.username === username && haftaUsers[0]?.adet > 0) {
+    if (son.hafta !== haftaKey) {
+      madalyalar.gumus = (madalyalar.gumus || 0) + 1;
+      son.hafta = haftaKey;
+    }
+  }
+
+  const ayUsers = await Promise.all(keys.map(async (k) => {
+    const data = await redis.get(k);
+    const name = k.replace(USERS_KEY_PREFIX, "");
+    return { username: name, adet: countKazanimByTip(data?.kazanilan, "aylik") };
+  }));
+  ayUsers.sort((a, b) => b.adet - a.adet);
+  if (ayUsers[0]?.username === username && ayUsers[0]?.adet > 0) {
+    if (son.ay !== ayKey) {
+      madalyalar.altin = (madalyalar.altin || 0) + 1;
+      son.ay = ayKey;
+    }
+  }
+
+  user.madalyalar = madalyalar;
+  user.son_madalya = son;
+  await saveUser(username, user);
+  return madalyalar;
+}
+
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
@@ -293,7 +356,7 @@ export default async function handler(req, res) {
         return json(res, 400, { error: "Kullanici adi (en az 2) ve sifre (en az 3) gerekli" });
       const existing = await getUser(username);
       if (existing) return json(res, 409, { error: "Bu kullanici adi zaten var" });
-      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], created_at: new Date().toISOString() };
+      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], madalyalar: { bronz: 0, gumus: 0, altin: 0 }, son_madalya: {}, created_at: new Date().toISOString() };
       await saveUser(username, user);
       const token = generateToken();
       const redis = getRedis();
@@ -372,6 +435,7 @@ export default async function handler(req, res) {
         user.hak = Math.min(20, 10 + (user.bonus_hak || 0));
         user.bugunku = [];
       }
+      const madalyalar = await checkMedals(username, user);
       return json(res, 200, {
         username,
         som: user.som || 0,
@@ -380,6 +444,7 @@ export default async function handler(req, res) {
         sohre_buyuklugu: user.sohre_buyuklugu || 0,
         sure: getCountdownDuration(user.sohre_buyuklugu || 0),
         kazanilan: normalizeKazanimlar(user.kazanilan),
+        madalyalar,
         created_at: user.created_at
       });
     }
