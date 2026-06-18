@@ -397,6 +397,21 @@ export default async function handler(req, res) {
       return json(res, 200, { username, som: newSom, eklenen: amount });
     }
 
+    if (path.length === 2 && path[0] === "admin" && path[1] === "aralik" && method === "POST") {
+      const pw = process.env.ADMIN_PASSWORD;
+      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
+      if (body.password !== pw) return json(res, 401, { error: "Yetkisiz" });
+      const { username, aralik } = body;
+      if (!username || typeof aralik !== "number" || isNaN(aralik) || aralik < 1)
+        return json(res, 400, { error: "Gecersiz komut. Ornek: /aralik rmy 3" });
+      const user = await getUser(username);
+      if (!user) return json(res, 404, { error: "Kullanici bulunamadi: " + username });
+      user.yagmur_aralik = aralik;
+      await saveUser(username, user);
+      addLog("som_change", `Admin: ${username} → yagmur aralik ${aralik}s`);
+      return json(res, 200, { username, aralik });
+    }
+
     if (path.length === 2 && path[0] === "admin" && path[1] === "logs" && method === "GET") {
       const pw = process.env.ADMIN_PASSWORD;
       if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
@@ -511,6 +526,7 @@ export default async function handler(req, res) {
         kitap_sayaci: user.kitap_sayaci || 0,
         saat_indirim: user.saat_indirim || 0,
         yagmur_tiklama: user.yagmur_tiklama || 0,
+        yagmur_aralik: user.yagmur_aralik || 0,
         created_at: user.created_at
       });
     }

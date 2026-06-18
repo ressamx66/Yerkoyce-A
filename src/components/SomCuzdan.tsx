@@ -14,7 +14,7 @@ export function SomCuzdan() {
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(() => sessionStorage.getItem("som_token"));
   const [somUser, setSomUser] = useState<string | null>(() => sessionStorage.getItem("som_user"));
-  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; kitap_sayaci: number; saat_indirim: number; yagmur_tiklama: number } | null>(null);
+  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; kitap_sayaci: number; saat_indirim: number; yagmur_tiklama: number; yagmur_aralik: number } | null>(null);
   const [siralama, setSiralama] = useState<{ username: string; adet: number }[]>([]);
   const [siralamaTip, setSiralamaTip] = useState("genel");
   const [showInfo, setShowInfo] = useState(false);
@@ -555,6 +555,7 @@ export function SomCuzdan() {
                           kitapSayaci={cuzdan.kitap_sayaci || 0}
                           saatIndirim={cuzdan.saat_indirim || 0}
                           yagmurTiklama={cuzdan.yagmur_tiklama || 0}
+                          yagmurAralik={cuzdan.yagmur_aralik || 0}
                           onUpdate={handleYagmurUpdate}
                         />
                       ) : (

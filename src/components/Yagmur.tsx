@@ -9,6 +9,7 @@ interface YagmurProps {
   kitapSayaci: number;
   saatIndirim: number;
   yagmurTiklama: number;
+  yagmurAralik: number;
   onUpdate: (data: { som?: number; hak?: number; yaprak_sayaci?: number; kitap_sayaci?: number; saat_indirim?: number; yagmur_tiklama?: number }) => void;
 }
 
@@ -27,7 +28,7 @@ interface Popup {
   x: number;
 }
 
-const DROP_INTERVAL = 10000;
+const BASE_INTERVAL = 10000;
 const BASE_FALL_DURATION = 7000;
 
 const EMOJI_MAP: Record<DropTur, string> = {
@@ -54,7 +55,7 @@ function randomTur(): DropTur {
   return "som";
 }
 
-export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kitap, saatIndirim, yagmurTiklama, onUpdate }: YagmurProps) {
+export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kitap, saatIndirim, yagmurTiklama, yagmurAralik, onUpdate }: YagmurProps) {
   const [drops, setDrops] = useState<Drop[]>([]);
   const [popups, setPopups] = useState<Popup[]>([]);
   const loadingRef = useRef(false);
@@ -62,6 +63,7 @@ export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kit
 
   const hizKatsayisi = 1 + yagmurTiklama * 0.01;
   const fallDuration = Math.round(BASE_FALL_DURATION / hizKatsayisi);
+  const dropInterval = (yagmurAralik > 0 ? yagmurAralik : BASE_INTERVAL / 1000) * 1000;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -76,9 +78,9 @@ export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kit
       setTimeout(() => {
         setDrops(prev => prev.filter(d => d.id !== drop.id));
       }, fallDuration);
-    }, DROP_INTERVAL);
+    }, dropInterval);
     return () => clearInterval(interval);
-  }, [fallDuration]);
+  }, [fallDuration, dropInterval]);
 
   const handleClick = useCallback(async (drop: Drop) => {
     if (loadingRef.current) return;
@@ -107,7 +109,7 @@ export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kit
       </div>
 
       <div className="flex gap-4 mb-2 text-[10px] text-moon-cream/40">
-        <span>Düşme aralığı: <span className="text-copper">10sn</span></span>
+        <span>Düşme aralığı: <span className="text-copper">{dropInterval / 1000}sn</span></span>
         <span>Düşme hızı: <span className="text-copper">{hizKatsayisi.toFixed(2)}</span></span>
       </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { WordEntry } from "../types";
-import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion, adminAuth, fetchMessages, adminSom, fetchLogs } from "../api";
+import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion, adminAuth, fetchMessages, adminSom, adminAralik, fetchLogs } from "../api";
 import { WordEditor } from "./WordEditor";
 
 type View = "list" | "edit" | "new";
@@ -176,10 +176,25 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const handleSomCommand = async () => {
     const pw = sessionStorage.getItem("yerkoyce_admin_pw");
     if (!pw) { setSomStatus("Sifre bulunamadi"); return; }
-    const match = somCommand.trim().match(/^\/som\s+(-?\d+)\s+(\S+)$/i);
-    if (!match) { setSomStatus("Gecersiz komut. Ornek: /som 20 Ahmet"); return; }
-    const amount = parseInt(match[1]);
-    const username = match[2];
+
+    const aralikMatch = somCommand.trim().match(/^\/aralik\s+(\S+)\s+(\d+)$/i);
+    if (aralikMatch) {
+      const username = aralikMatch[1];
+      const aralik = parseInt(aralikMatch[2]);
+      try {
+        const data = await adminAralik(pw, aralik, username);
+        setSomStatus(`${data.username}: yagmur araligi ${data.aralik}s`);
+        setSomCommand("");
+      } catch (e) {
+        setSomStatus(e instanceof Error ? e.message : "Hata");
+      }
+      return;
+    }
+
+    const somMatch = somCommand.trim().match(/^\/som\s+(-?\d+)\s+(\S+)$/i);
+    if (!somMatch) { setSomStatus("Gecersiz komut. Ornek: /som 20 Ahmet veya /aralik rmy 3"); return; }
+    const amount = parseInt(somMatch[1]);
+    const username = somMatch[2];
     try {
       const data = await adminSom(pw, amount, username);
       setSomStatus(`${data.username}: ${data.som} § (${data.eklenen >= 0 ? "+" : ""}${data.eklenen})`);
@@ -247,7 +262,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             value={somCommand}
             onChange={(e) => setSomCommand(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSomCommand()}
-            placeholder="/som 20 Ahmet"
+            placeholder="/som 20 Ahmet | /aralik rmy 3"
             className="flex-1 px-3 py-2 bg-steppe-dark text-moon-cream border border-white/10 rounded-sm text-sm placeholder:text-moon-cream/30 focus:outline-none focus:border-copper/40 font-mono"
           />
           <button
