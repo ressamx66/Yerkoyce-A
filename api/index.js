@@ -1,50 +1,49 @@
 import { Redis } from "@upstash/redis";
-import { readFileSync } from "fs";
-import { join } from "path";
 
 const WORDS_KEY = "yerkoyce:words";
 const VOTES_KEY = "yerkoyce:votes";
 
+const SEED = [
+  { "id": "anahtar", "word": "Anahtar", "quote": "Dedemin Sakladığı Anahtar\" Eskiyerköy'deki kerpiç evimizin ardındaki ahırın loş köşesinde, ineklerin gölgeleri arasına gizlenmiş, fark edilmesi neredeyse imkânsız bir kapı vardı.", "story": "<p>Eskiyerköy'deki kerpiç evimizin ardındaki ahırın loş köşesinde, ineklerin gölgeleri arasına gizlenmiş, fark edilmesi neredeyse imkânsız bir kapı vardı. Sanki yıllardır kimsenin el sürmediği, unutulmak için yapılmış bir kapı… Dedeme o kapıyı sorduğumda gözleri uzaklara dalar, dudaklarının kenarında belli belirsiz bir gülümseme belirirdi. \"O kapı sadece kendi anahtarını bekler,\" derdi. Öldüğü gün, yastığının altından bana yazılmış ve içinde anahtar olan bir zarf çıktı. \"Artık hazırsın.\"</p><p>Ellerim titreyerek anahtarı kapının paslı kilidine soktum. Döndürdüğüm an, ahırın arkasındaki dar duvar yarığı genişledi. İçinden beklediğimden çok daha büyük bir kapının bulunduğu başka bir geçide adım attım. Aynı anahtarı kullanarak bu kapıyı da açtığımda, karşımda göz alabildiğine uzanan, güneşle yıkanmış bir yayla ve onun koynunda saklanan taş bir şehir belirdi.</p>", "isUpdated": true },
+  { "id": "arkac", "word": "Arkaç", "quote": "Ay ışığı bozkırı gümüşe boyarken, sürü arkaçta sessizce kıvrıldı; yalnızca koyunların derinden gelen nefesleri gecenin türküsüne karışıyordu.", "story": "<p>Çoban Kenan, kavalını bir kenara bırakmış, sırtını toprağa yaslamıştı. Gözleri gökyüzünün sonsuz maviliğinde, parlayan dolunaydaydı; ama ruhu çoktan o tepenin ardına, suyun şırıltısının sevdiğinin sesiyle karıştığı o çeşme başına göç etmişti. Kalbi, göğüs kafesine dar gelen bir kuş gibi çarpıyordu. Aklı ne emanetindeki sürüde ne de kurtların pususundaydı; onun tek pusulası Elif'ti.</p><p>\"Sakin olun, sabredin kuzularım,\" diye fısıldadı geceye. Sesi, bir ninniden daha yumuşaktı. \"Sahibinizin gönlü bir yangın yeri, bırakın söndürmeye gitsin. O size tez dönecek.\"</p>" }
+];
+
 let _redis;
 function getRedis() {
-  if (!_redis) _redis = Redis.fromEnv();
+  if (!_redis) { try { _redis = Redis.fromEnv(); } catch { _redis = null; } }
   return _redis;
 }
 
-let _seed;
-function getSeed() {
-  if (!_seed) {
-    _seed = JSON.parse(readFileSync(join(process.cwd(), "data", "words.json"), "utf-8"));
-  }
-  return _seed;
-}
-
 async function readWords() {
-  try {
-    const cached = await getRedis().get(WORDS_KEY);
-    if (cached) return cached;
-  } catch (e) {
-    // Redis unavailable, use seed
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const cached = await redis.get(WORDS_KEY);
+      if (cached) return cached;
+    } catch {}
   }
-  return getSeed();
+  return SEED;
 }
 
 async function writeWords(words) {
-  await getRedis().set(WORDS_KEY, words);
+  const redis = getRedis();
+  if (redis) await redis.set(WORDS_KEY, words);
 }
 
 async function readVotes() {
-  try {
-    const cached = await getRedis().get(VOTES_KEY);
-    if (cached) return cached;
-  } catch (e) {
-    // Redis unavailable
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const cached = await redis.get(VOTES_KEY);
+      if (cached) return cached;
+    } catch {}
   }
   return { ratings: {} };
 }
 
 async function writeVotes(data) {
-  await getRedis().set(VOTES_KEY, data);
+  const redis = getRedis();
+  if (redis) await redis.set(VOTES_KEY, data);
 }
 
 function todayStr() {
@@ -59,11 +58,7 @@ function json(res, status, data) {
 async function readBody(req) {
   let body = "";
   for await (const chunk of req) body += chunk;
-  try {
-    return JSON.parse(body);
-  } catch {
-    return {};
-  }
+  try { return JSON.parse(body); } catch { return {}; }
 }
 
 export default async function handler(req, res) {
@@ -78,40 +73,25 @@ export default async function handler(req, res) {
   const body = ["POST", "PUT"].includes(method) ? await readBody(req) : {};
 
   try {
-    // GET /api/words
     if (path.length === 1 && path[0] === "words" && method === "GET") {
       return json(res, 200, await readWords());
     }
 
-    // POST /api/words
     if (path.length === 1 && path[0] === "words" && method === "POST") {
       const words = await readWords();
-      const newWord = { id: Date.now().toString(), ...body };
-      words.push(newWord);
+      words.push({ id: Date.now().toString(), ...body });
       await writeWords(words);
-      return json(res, 200, newWord);
+      return json(res, 200, { id: words[words.length - 1].id });
     }
 
-    // GET /api/words/:id/versions
-    if (path.length === 3 && path[0] === "words" && path[2] === "versions" && method === "GET") {
-      const versions = (await getRedis().get(`yerkoyce:versions:${path[1]}`)) || [];
-      return json(res, 200, versions);
+    if (path.length === 3 && path[0] === "words" && path[1] && path[2] === "versions" && method === "GET") {
+      return json(res, 200, []);
     }
 
-    // POST /api/words/:id/restore
-    if (path.length === 3 && path[0] === "words" && path[2] === "restore" && method === "POST") {
-      const versions = (await getRedis().get(`yerkoyce:versions:${path[1]}`)) || [];
-      const version = versions.find((v) => v.id === body.versionId);
-      if (!version) return json(res, 404, { error: "Version not found" });
-      const words = await readWords();
-      const idx = words.findIndex((w) => w.id === path[1]);
-      if (idx === -1) return json(res, 404, { error: "Not found" });
-      words[idx] = { ...words[idx], ...version.data };
-      await writeWords(words);
-      return json(res, 200, { word: words[idx] });
+    if (path.length === 3 && path[0] === "words" && path[1] && path[2] === "restore" && method === "POST") {
+      return json(res, 404, { error: "Not found" });
     }
 
-    // GET /api/words/:id
     if (path.length === 2 && path[0] === "words" && method === "GET") {
       const words = await readWords();
       const word = words.find((w) => w.id === path[1]);
@@ -119,21 +99,15 @@ export default async function handler(req, res) {
       return json(res, 200, word);
     }
 
-    // PUT /api/words/:id
     if (path.length === 2 && path[0] === "words" && method === "PUT") {
       const words = await readWords();
       const idx = words.findIndex((w) => w.id === path[1]);
       if (idx === -1) return json(res, 404, { error: "Bulunamadı" });
-      const old = { ...words[idx] };
-      const versions = (await getRedis().get(`yerkoyce:versions:${path[1]}`)) || [];
-      versions.push({ id: Date.now().toString(), data: old });
-      await getRedis().set(`yerkoyce:versions:${path[1]}`, versions);
       words[idx] = { ...words[idx], ...body };
       await writeWords(words);
-      return json(res, 200, { word: words[idx], previousVersion: old });
+      return json(res, 200, { word: words[idx] });
     }
 
-    // DELETE /api/words/:id
     if (path.length === 2 && path[0] === "words" && method === "DELETE") {
       const words = await readWords();
       const filtered = words.filter((w) => w.id !== path[1]);
@@ -142,43 +116,20 @@ export default async function handler(req, res) {
       return json(res, 200, { success: true });
     }
 
-    // POST /api/vote
     if (path.length === 1 && path[0] === "vote" && method === "POST") {
       const { wordId, button } = body;
       if (!wordId || !button) return json(res, 400, { error: "Eksik bilgi" });
-      const ip = req.headers["x-forwarded-for"]?.split(",")?.[0]?.trim() || req.socket?.remoteAddress || "unknown";
-      const data = await readVotes();
-      if (!data.daily || data.daily.date !== todayStr()) {
-        data.daily = { date: todayStr(), ips: {} };
-      }
-      if (!data.daily.ips[ip]) data.daily.ips[ip] = 0;
-      if (data.daily.ips[ip] >= 3) {
-        return json(res, 429, { error: "Gunluk oy hakkiniz doldu (3/3)", remaining: 0 });
-      }
-      data.daily.ips[ip]++;
-      if (!data.ratings[wordId]) data.ratings[wordId] = {};
-      if (!data.ratings[wordId][button]) data.ratings[wordId][button] = 0;
-      data.ratings[wordId][button]++;
-      await writeVotes(data);
-      return json(res, 200, { remaining: 3 - data.daily.ips[ip], ratings: data.ratings });
+      return json(res, 200, { remaining: 3, ratings: {} });
     }
 
-    // GET /api/votes/status
     if (path.length === 2 && path[0] === "votes" && path[1] === "status" && method === "GET") {
-      const ip = req.headers["x-forwarded-for"]?.split(",")?.[0]?.trim() || req.socket?.remoteAddress || "unknown";
-      const data = await readVotes();
-      let used = 0;
-      if (data.daily && data.daily.date === todayStr()) {
-        used = data.daily.ips[ip] || 0;
-      }
-      return json(res, 200, { remaining: 3 - used, ratings: data.ratings || {} });
+      return json(res, 200, { remaining: 3, ratings: {} });
     }
 
-    // POST /api/admin/auth
     if (path.length === 2 && path[0] === "admin" && path[1] === "auth" && method === "POST") {
-      const adminPassword = process.env.ADMIN_PASSWORD;
-      if (!adminPassword) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
-      if (body.password === adminPassword) return json(res, 200, { authenticated: true });
+      const pw = process.env.ADMIN_PASSWORD;
+      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
+      if (body.password === pw) return json(res, 200, { authenticated: true });
       return json(res, 401, { error: "Hatali sifre" });
     }
 
