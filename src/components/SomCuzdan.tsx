@@ -14,7 +14,8 @@ export function SomCuzdan() {
   const [token, setToken] = useState(() => sessionStorage.getItem("som_token"));
   const [somUser, setSomUser] = useState<string | null>(() => sessionStorage.getItem("som_user"));
   const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: string[] } | null>(null);
-  const [siralama, setSiralama] = useState<{ username: string; som: number }[]>([]);
+  const [siralama, setSiralama] = useState<{ username: string; adet: number }[]>([]);
+  const [siralamaTip, setSiralamaTip] = useState("genel");
   const [deyis, setDeyis] = useState("");
   const [hata, setHata] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,11 +33,11 @@ export function SomCuzdan() {
     } catch { setCuzdan(null); }
   };
 
-  const loadSiralama = async () => {
-    try { setSiralama(await getSiralama()); } catch {}
+  const loadSiralama = async (tip?: string) => {
+    try { setSiralama(await getSiralama(tip || siralamaTip)); } catch {}
   };
 
-  useEffect(() => { if (open && token) { loadCuzdan(); loadSiralama(); } }, [open, token]);
+  useEffect(() => { if (open && token) { loadCuzdan(); loadSiralama(siralamaTip); } }, [open, token, siralamaTip]);
 
   useEffect(() => {
     return () => clearInterval(timerRef.current);
@@ -151,7 +152,7 @@ export function SomCuzdan() {
 
   const handleOpen = () => {
     setOpen(true);
-    if (token) { setTab("cuzdan"); loadSiralama(); }
+    if (token) { setTab("cuzdan"); loadSiralama(siralamaTip); }
     else setTab("login");
     setHata("");
   };
@@ -256,7 +257,7 @@ export function SomCuzdan() {
                       Cüzdan
                     </button>
                     <button
-                      onClick={() => { setTab("siralama"); loadSiralama(); }}
+                      onClick={() => { setTab("siralama"); loadSiralama(siralamaTip); }}
                       className={`text-xs tracking-wider cursor-pointer ${tab === "siralama" ? "text-copper" : "text-moon-cream/40"}`}
                     >
                       Sıralama
@@ -361,11 +362,14 @@ export function SomCuzdan() {
                             Kazanılanlar ({cuzdan.kazanilan.length})
                           </p>
                           <div className="max-h-32 overflow-y-auto space-y-1">
-                            {cuzdan.kazanilan.map((k) => (
-                              <div key={k} className="text-xs text-moon-cream/60 px-2 py-1 bg-white/5 rounded-sm">
-                                {k}
-                              </div>
-                            ))}
+                            {cuzdan.kazanilan.map((k, idx) => {
+                              const deyis = typeof k === "string" ? k : k.deyis;
+                              return (
+                                <div key={idx} className="text-xs text-moon-cream/60 px-2 py-1 bg-white/5 rounded-sm">
+                                  {deyis}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -373,24 +377,42 @@ export function SomCuzdan() {
                   )}
 
                   {tab === "siralama" && (
-                    <div className="space-y-1 max-h-60 overflow-y-auto">
-                      {siralama.length === 0 && (
-                        <p className="text-xs text-moon-cream/40">Henüz veri yok.</p>
-                      )}
-                      {siralama.map((u, i) => (
-                        <div
-                          key={u.username}
-                          className="flex items-center justify-between px-3 py-2 bg-white/5 border border-white/10 rounded-sm text-sm"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className="text-xs text-moon-cream/40 w-5">{i + 1}.</span>
-                            <span className={u.username === somUser ? "text-copper" : "text-moon-cream/80"}>
-                              {u.username}
+                    <div className="space-y-2">
+                      <div className="flex gap-2 border-b border-white/10 pb-2">
+                        {[
+                          { key: "gunluk", label: "Günlük" },
+                          { key: "haftalik", label: "Haftalık" },
+                          { key: "aylik", label: "Aylık" },
+                          { key: "genel", label: "Genel" },
+                        ].map((t) => (
+                          <button
+                            key={t.key}
+                            onClick={() => { setSiralamaTip(t.key); loadSiralama(t.key); }}
+                            className={`text-[10px] tracking-wider cursor-pointer pb-1 ${siralamaTip === t.key ? "text-copper border-b-2 border-copper" : "text-moon-cream/40"}`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="space-y-1 max-h-52 overflow-y-auto">
+                        {siralama.length === 0 && (
+                          <p className="text-xs text-moon-cream/40">Henüz veri yok.</p>
+                        )}
+                        {siralama.map((u, i) => (
+                          <div
+                            key={u.username}
+                            className="flex items-center justify-between px-3 py-2 bg-white/5 border border-white/10 rounded-sm text-sm"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-xs text-moon-cream/40 w-5">{i + 1}.</span>
+                              <span className={u.username === somUser ? "text-copper" : "text-moon-cream/80"}>
+                                {u.username}
+                              </span>
                             </span>
-                          </span>
-                          <span className="text-copper font-serif">{u.som} §</span>
-                        </div>
-                      ))}
+                            <span className="text-copper font-serif">{u.adet} deyiş</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

@@ -125,8 +125,9 @@ export function getCuzdan(token: string) {
   });
 }
 
-export function getSiralama() {
-  return fetcher<{ username: string; som: number }[]>("/som/siralama");
+export function getSiralama(tip?: string) {
+  const q = tip && tip !== "genel" ? `?tip=${tip}` : "";
+  return fetcher<{ username: string; adet: number }[]>(`/som/siralama${q}`);
 }
 
 export function yukselt(token: string) {

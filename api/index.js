@@ -174,6 +174,22 @@ function getCountdownDuration(upgrades) {
   return Math.round(BASE_COUNTDOWN * Math.pow(COUNTDOWN_DISCOUNT, n));
 }
 
+function normalizeKazanimlar(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map((e) => (typeof e === "string" ? { deyis: e, time: 0 } : e));
+}
+
+function countKazanimByTip(arr, tip) {
+  const now = Date.now();
+  let cutoff;
+  if (tip === "gunluk") cutoff = now - 86400000;
+  else if (tip === "haftalik") cutoff = now - 7 * 86400000;
+  else if (tip === "aylik") cutoff = now - 30 * 86400000;
+  else cutoff = 0;
+  const normalized = normalizeKazanimlar(arr);
+  return normalized.filter((e) => e.time >= cutoff).length;
+}
+
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
@@ -323,7 +339,7 @@ export default async function handler(req, res) {
       user.bugunku.push(normalized);
       if (sonuc === "kazanildi") {
         user.kazanilan = user.kazanilan || [];
-        user.kazanilan.push(normalized);
+        user.kazanilan.push({ deyis: normalized, time: Date.now() });
         user.som = (user.som || 0) + 1;
       }
       user.pending = { deyis: normalized, sonuc, timestamp: Date.now() };
@@ -361,7 +377,7 @@ export default async function handler(req, res) {
         bonus_hak: user.bonus_hak || 0,
         sohre_buyuklugu: user.sohre_buyuklugu || 0,
         sure: getCountdownDuration(user.sohre_buyuklugu || 0),
-        kazanilan: user.kazanilan || [],
+        kazanilan: normalizeKazanimlar(user.kazanilan),
         created_at: user.created_at
       });
     }
@@ -370,13 +386,15 @@ export default async function handler(req, res) {
       const redis = getRedis();
       if (!redis) return json(res, 200, []);
       await seedDeyisler();
+      const tip = url.searchParams.get("tip") || "genel";
       const keys = await redis.keys(USERS_KEY_PREFIX + "*");
       const users = await Promise.all(keys.map(async (k) => {
         const data = await redis.get(k);
         const username = k.replace(USERS_KEY_PREFIX, "");
-        return { username, som: data?.som || 0 };
+        const adet = countKazanimByTip(data?.kazanilan, tip);
+        return { username, adet };
       }));
-      users.sort((a, b) => b.som - a.som);
+      users.sort((a, b) => b.adet - a.adet);
       return json(res, 200, users.slice(0, 50));
     }
 
