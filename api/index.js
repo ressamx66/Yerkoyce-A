@@ -542,6 +542,24 @@ export default async function handler(req, res) {
       return json(res, 200, { som: user.som, sohre_buyuklugu: user.sohre_buyuklugu, sure: yeniSure, mesaj: `Geri sayım ${yeniSure}s'a dustu!` });
     }
 
+    if (path.length === 2 && path[0] === "som" && path[1] === "takas" && method === "POST") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const { tur } = body;
+      if (!["bronz", "gumus"].includes(tur)) return json(res, 400, { error: "Gecersiz takas turu (bronz/gumus)" });
+      const user = await getUser(username);
+      if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
+      const m = user.madalyalar || { bronz: 0, gumus: 0, altin: 0 };
+      if ((m[tur] || 0) < 10) return json(res, 400, { error: `En az 10 ${tur === "bronz" ? "bronz" : "gumus"} madalyaniz olmali` });
+      m[tur] -= 10;
+      if (tur === "bronz") { m.gumus = (m.gumus || 0) + 1; }
+      else { m.altin = (m.altin || 0) + 1; }
+      user.madalyalar = m;
+      await saveUser(username, user);
+      addLog("som_change", `${username}: 10 ${tur} → 1 ${tur === "bronz" ? "gumus" : "altin"} takas`);
+      return json(res, 200, { madalyalar: m, mesaj: "Takas basarili!" });
+    }
+
     return json(res, 404, { error: "Not found" });
   } catch (err) {
     return json(res, 500, { error: err.message || "Internal error" });

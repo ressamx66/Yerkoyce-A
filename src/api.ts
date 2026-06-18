@@ -148,3 +148,11 @@ export function yukseltTimer(token: string) {
     headers: authHeaders(token),
   });
 }
+
+export function takas(token: string, tur: "bronz" | "gumus") {
+  return fetcher<{ madalyalar: { bronz: number; gumus: number; altin: number }; mesaj: string }>("/som/takas", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ tur }),
+  });
+}

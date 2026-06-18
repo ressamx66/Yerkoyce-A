@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, LogOut, ArrowUp } from "lucide-react";
-import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, getMadalyonlar, yukselt, yukseltTimer } from "../api";
+import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, getMadalyonlar, yukselt, yukseltTimer, takas } from "../api";
 
 type Tab = "login" | "register" | "cuzdan" | "siralama" | "madalya";
 type SonucTuru = "kazanildi" | "gecersiz" | null;
@@ -135,6 +135,20 @@ export function SomCuzdan() {
     try {
       const data = await yukseltTimer(token);
       await loadCuzdan();
+      setHata(data.mesaj);
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Hata");
+    }
+    setLoading(false);
+  };
+
+  const handleTakas = async (tur: "bronz" | "gumus") => {
+    if (!token) return;
+    setLoading(true);
+    setHata("");
+    try {
+      const data = await takas(token, tur);
+      setCuzdan((prev) => prev ? { ...prev, madalyalar: data.madalyalar } : prev);
       setHata(data.mesaj);
     } catch (e) {
       setHata(e instanceof Error ? e.message : "Hata");
@@ -305,6 +319,29 @@ export function SomCuzdan() {
                           <span className="text-copper font-serif">{cuzdan?.madalyalar?.bronz ?? 0}</span>
                         </span>
                       </div>
+
+                      {(cuzdan?.madalyalar?.bronz ?? 0) >= 10 || (cuzdan?.madalyalar?.gumus ?? 0) >= 10 ? (
+                        <div className="flex gap-2">
+                          {(cuzdan?.madalyalar?.bronz ?? 0) >= 10 && (
+                            <button
+                              onClick={() => handleTakas("bronz")}
+                              disabled={loading}
+                              className="flex-1 py-1.5 border border-amber-700/40 text-amber-700 text-[10px] rounded-sm hover:bg-amber-700/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all text-center"
+                            >
+                              10 🥉 → 1 🥈
+                            </button>
+                          )}
+                          {(cuzdan?.madalyalar?.gumus ?? 0) >= 10 && (
+                            <button
+                              onClick={() => handleTakas("gumus")}
+                              disabled={loading}
+                              className="flex-1 py-1.5 border border-gray-400/40 text-gray-300 text-[10px] rounded-sm hover:bg-gray-400/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all text-center"
+                            >
+                              10 🥈 → 1 🥇
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
 
                       <div className="flex items-center justify-between gap-3 py-2 px-4 bg-white/5 border border-white/10 rounded-sm">
                         <p className="text-xs text-moon-cream/40">
