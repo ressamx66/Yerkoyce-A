@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { WordEntry } from "../types";
-import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion, adminAuth } from "../api";
+import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion, adminAuth, fetchMessages } from "../api";
 import { WordEditor } from "./WordEditor";
 
 type View = "list" | "edit" | "new";
@@ -17,6 +17,9 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [tab, setTab] = useState<"words" | "messages">("words");
+  const [messages, setMessages] = useState<{ id: string; text: string; contact: string; date: string }[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
 
   const handleLogin = async () => {
     setAuthLoading(true);
@@ -24,6 +27,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     try {
       await adminAuth(authPassword);
       sessionStorage.setItem("yerkoyce_admin", "true");
+      sessionStorage.setItem("yerkoyce_admin_pw", authPassword);
       setAuthenticated(true);
     } catch (e) {
       setAuthError(e instanceof Error ? e.message : "Bağlantı hatası!");
@@ -73,7 +77,19 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
+  const loadMessages = useCallback(async () => {
+    const pw = authPassword || sessionStorage.getItem("yerkoyce_admin_pw");
+    if (!pw) return;
+    setMessagesLoading(true);
+    try {
+      const data = await fetchMessages(pw);
+      setMessages(data);
+    } catch {}
+    setMessagesLoading(false);
+  }, [authPassword]);
+
   useEffect(() => { if (authenticated) load(); }, [authenticated, load]);
+  useEffect(() => { if (authenticated && tab === "messages") loadMessages(); }, [authenticated, tab, loadMessages]);
 
   const handleEdit = async (w: WordEntry) => {
     setCurrent(w);
@@ -161,7 +177,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[100] bg-steppe-dark text-moon-cream overflow-y-auto">
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
           <h1 className="font-serif text-2xl text-copper">⚙️ Admin Paneli</h1>
           <div className="flex items-center gap-3">
             {status && <span className="text-xs text-copper">{status}</span>}
@@ -171,7 +187,23 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {view === "list" && (
+        {/* Tabs */}
+        <div className="flex gap-4 mb-6 border-b border-white/10">
+          <button
+            onClick={() => setTab("words")}
+            className={`pb-2 text-xs uppercase tracking-wider cursor-pointer transition-colors ${tab === "words" ? "text-copper border-b-2 border-copper" : "text-moon-cream/40 hover:text-moon-cream/60"}`}
+          >
+            Yazılar
+          </button>
+          <button
+            onClick={() => setTab("messages")}
+            className={`pb-2 text-xs uppercase tracking-wider cursor-pointer transition-colors ${tab === "messages" ? "text-copper border-b-2 border-copper" : "text-moon-cream/40 hover:text-moon-cream/60"}`}
+          >
+            Mesajlar {messages.length > 0 && `(${messages.length})`}
+          </button>
+        </div>
+
+        {tab === "words" && view === "list" && (
           <>
             <button
               onClick={() => { setEditData({ word: "", quote: "", story: "" }); setView("new"); setStatus(""); }}
@@ -199,6 +231,30 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </>
+        )}
+
+        {tab === "messages" && (
+          <div className="space-y-3">
+            {messagesLoading && <p className="text-xs text-moon-cream/40">Yükleniyor...</p>}
+            {!messagesLoading && messages.length === 0 && (
+              <p className="text-xs text-moon-cream/40">Henüz mesaj yok.</p>
+            )}
+            {messages.map((m) => (
+              <div key={m.id} className="p-4 bg-white/5 border border-white/10 rounded-sm">
+                <p className="text-sm text-moon-cream whitespace-pre-wrap">{m.text}</p>
+                <div className="flex items-center gap-3 mt-3 text-xs text-moon-cream/40">
+                  {m.contact && <span>{m.contact}</span>}
+                  <span>{new Date(m.date).toLocaleString("tr-TR")}</span>
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={loadMessages}
+              className="mt-4 px-4 py-2 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/20 cursor-pointer"
+            >
+              Yenile
+            </button>
+          </div>
         )}
 
         {(view === "edit" || view === "new") && (

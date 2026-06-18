@@ -3,6 +3,7 @@ import { AnimatePresence } from "motion/react";
 import { Hero } from "./components/Hero";
 import { DictionaryGrid } from "./components/DictionaryGrid";
 import { WordModal } from "./components/WordModal";
+import { ContactModal } from "./components/ContactModal";
 import { AdminPanel } from "./admin/AdminPanel";
 import { words as staticWords } from "./data";
 import { fetchWords } from "./api";
@@ -58,6 +59,8 @@ export default function App() {
           </button>
         </div>
       </footer>
+
+      <ContactModal />
 
       <AnimatePresence mode="wait">
         {selectedWord && (

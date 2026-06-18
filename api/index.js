@@ -2,6 +2,7 @@ import { Redis } from "@upstash/redis";
 
 const WORDS_KEY = "yerkoyce:words";
 const VOTES_KEY = "yerkoyce:votes";
+const MESSAGES_KEY = "yerkoyce:messages";
 
 const SEED = [
   { "id": "anahtar", "word": "Anahtar", "quote": "Dedemin Sakladığı Anahtar\" Eskiyerköy'deki kerpiç evimizin ardındaki ahırın loş köşesinde, ineklerin gölgeleri arasına gizlenmiş, fark edilmesi neredeyse imkânsız bir kapı vardı.", "story": "<p>Eskiyerköy'deki kerpiç evimizin ardındaki ahırın loş köşesinde, ineklerin gölgeleri arasına gizlenmiş, fark edilmesi neredeyse imkânsız bir kapı vardı. Sanki yıllardır kimsenin el sürmediği, unutulmak için yapılmış bir kapı… Dedeme o kapıyı sorduğumda gözleri uzaklara dalar, dudaklarının kenarında belli belirsiz bir gülümseme belirirdi. \"O kapı sadece kendi anahtarını bekler,\" derdi. Öldüğü gün, yastığının altından bana yazılmış ve içinde anahtar olan bir zarf çıktı. \"Artık hazırsın.\"</p><p>Ellerim titreyerek anahtarı kapının paslı kilidine soktum. Döndürdüğüm an, ahırın arkasındaki dar duvar yarığı genişledi. İçinden beklediğimden çok daha büyük bir kapının bulunduğu başka bir geçide adım attım. Aynı anahtarı kullanarak bu kapıyı da açtığımda, karşımda göz alabildiğine uzanan, güneşle yıkanmış bir yayla ve onun koynunda saklanan taş bir şehir belirdi.</p>", "isUpdated": true },
@@ -44,6 +45,22 @@ async function readVotes() {
 async function writeVotes(data) {
   const redis = getRedis();
   if (redis) await redis.set(VOTES_KEY, data);
+}
+
+async function readMessages() {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const cached = await redis.get(MESSAGES_KEY);
+      if (cached) return cached;
+    } catch {}
+  }
+  return [];
+}
+
+async function writeMessages(msgs) {
+  const redis = getRedis();
+  if (redis) await redis.set(MESSAGES_KEY, msgs);
 }
 
 function todayStr() {
@@ -124,6 +141,27 @@ export default async function handler(req, res) {
 
     if (path.length === 2 && path[0] === "votes" && path[1] === "status" && method === "GET") {
       return json(res, 200, { remaining: 3, ratings: {} });
+    }
+
+    if (path.length === 1 && path[0] === "messages" && method === "POST") {
+      const { text, contact } = body;
+      if (!text || !text.trim()) return json(res, 400, { error: "Mesaj gerekli" });
+      const messages = await readMessages();
+      messages.unshift({
+        id: Date.now().toString(),
+        text: text.trim(),
+        contact: contact?.trim() || "",
+        date: new Date().toISOString()
+      });
+      await writeMessages(messages);
+      return json(res, 200, { success: true });
+    }
+
+    if (path.length === 1 && path[0] === "messages" && method === "GET") {
+      const pw = process.env.ADMIN_PASSWORD;
+      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
+      if (url.searchParams.get("password") !== pw) return json(res, 401, { error: "Yetkisiz" });
+      return json(res, 200, await readMessages());
     }
 
     if (path.length === 2 && path[0] === "admin" && path[1] === "auth" && method === "POST") {

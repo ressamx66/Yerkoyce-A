@@ -54,3 +54,16 @@ export function adminAuth(password: string) {
     body: JSON.stringify({ password }),
   });
 }
+
+export function sendMessage(text: string, contact?: string) {
+  return fetcher<{ success: boolean }>("/messages", {
+    method: "POST",
+    body: JSON.stringify({ text, contact }),
+  });
+}
+
+export function fetchMessages(password: string) {
+  return fetcher<{ id: string; text: string; contact: string; date: string }[]>(
+    `/messages?password=${encodeURIComponent(password)}`
+  );
+}
