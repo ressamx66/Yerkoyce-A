@@ -190,7 +190,7 @@ export function SomCuzdan() {
       <button
         onClick={handleOpen}
         className="fixed bottom-6 right-[152px] z-40 w-14 h-14 rounded-full bg-copper/90 text-moon-cream shadow-xl hover:bg-copper hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-xl font-serif"
-        title={somUser ? `${somUser} - ${cuzdan?.som || 0} §` : "SOM Cüzdan"}
+        title={somUser ? `${somUser} - ${(cuzdan?.som || 0).toFixed(2)} §` : "SOM Cüzdan"}
       >
         <span className="text-lg">{somUser ? "§" : "§"}</span>
       </button>
@@ -301,7 +301,7 @@ export function SomCuzdan() {
                         <span className="text-2xl text-copper font-serif">§</span>
                         <div>
                           <p className="text-xs text-moon-cream/40">SOM BAKİYE</p>
-                          <p className="text-lg font-serif text-copper">{cuzdan?.som ?? 0} §</p>
+                          <p className="text-lg font-serif text-copper">{((cuzdan?.som ?? 0)).toFixed(2)} §</p>
                         </div>
                       </div>
 
