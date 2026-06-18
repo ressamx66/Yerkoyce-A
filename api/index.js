@@ -165,6 +165,15 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const BASE_COUNTDOWN = 300;
+const COUNTDOWN_DISCOUNT = 0.95;
+const MAX_TIMER_UPGRADES = 10;
+
+function getCountdownDuration(upgrades) {
+  const n = Math.min(upgrades || 0, MAX_TIMER_UPGRADES);
+  return Math.round(BASE_COUNTDOWN * Math.pow(COUNTDOWN_DISCOUNT, n));
+}
+
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
@@ -319,7 +328,8 @@ export default async function handler(req, res) {
       }
       user.pending = { deyis: normalized, sonuc, timestamp: Date.now() };
       await saveUser(username, user);
-      return json(res, 200, { bekleme: 60, hak_kaldi: user.hak });
+      const bekleme = getCountdownDuration(user.sohre_buyuklugu || 0);
+      return json(res, 200, { bekleme, hak_kaldi: user.hak });
     }
 
     if (path.length === 2 && path[0] === "som" && path[1] === "sonuc" && method === "GET") {
@@ -349,6 +359,8 @@ export default async function handler(req, res) {
         som: user.som || 0,
         hak: user.hak ?? (10 + (user.bonus_hak || 0)),
         bonus_hak: user.bonus_hak || 0,
+        sohre_buyuklugu: user.sohre_buyuklugu || 0,
+        sure: getCountdownDuration(user.sohre_buyuklugu || 0),
         kazanilan: user.kazanilan || [],
         created_at: user.created_at
       });
@@ -379,6 +391,22 @@ export default async function handler(req, res) {
       user.bonus_hak = (user.bonus_hak || 0) + 1;
       await saveUser(username, user);
       return json(res, 200, { som: user.som, bonus_hak: user.bonus_hak, mesaj: "Gunluk hakkiniz 1 artti!" });
+    }
+
+    if (path.length === 2 && path[0] === "som" && path[1] === "yukselt-timer" && method === "POST") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const user = await getUser(username);
+      if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
+      if ((user.som || 0) < 10) return json(res, 400, { error: "Yetersiz SOM. 10 SOM gerekli." });
+      if ((user.sohre_buyuklugu || 0) >= MAX_TIMER_UPGRADES)
+        return json(res, 400, { error: "Maksimum sure indirimine ulastiniz (10)." });
+      user.som -= 10;
+      user.sohre_buyuklugu = (user.sohre_buyuklugu || 0) + 1;
+      await saveUser(username, user);
+      const yeniSure = getCountdownDuration(user.sohre_buyuklugu);
+      addLog("som_change", `Admin: ${username} → sure indirimi (${user.sohre_buyuklugu}/10, yeni: ${yeniSure}s)`);
+      return json(res, 200, { som: user.som, sohre_buyuklugu: user.sohre_buyuklugu, sure: yeniSure, mesaj: `Geri sayım ${yeniSure}s'a dustu!` });
     }
 
     return json(res, 404, { error: "Not found" });

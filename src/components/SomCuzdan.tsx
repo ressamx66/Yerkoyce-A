@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, LogOut, ArrowUp } from "lucide-react";
-import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, yukselt } from "../api";
+import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, yukselt, yukseltTimer } from "../api";
 
 type Tab = "login" | "register" | "cuzdan" | "siralama";
 type SonucTuru = "kazanildi" | "gecersiz" | "tekrar" | null;
@@ -13,7 +13,7 @@ export function SomCuzdan() {
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(() => sessionStorage.getItem("som_token"));
   const [somUser, setSomUser] = useState<string | null>(() => sessionStorage.getItem("som_user"));
-  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; kazanilan: string[] } | null>(null);
+  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: string[] } | null>(null);
   const [siralama, setSiralama] = useState<{ username: string; som: number }[]>([]);
   const [deyis, setDeyis] = useState("");
   const [hata, setHata] = useState("");
@@ -113,6 +113,20 @@ export function SomCuzdan() {
     setHata("");
     try {
       const data = await yukselt(token);
+      await loadCuzdan();
+      setHata(data.mesaj);
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Hata");
+    }
+    setLoading(false);
+  };
+
+  const handleYukseltTimer = async () => {
+    if (!token) return;
+    setLoading(true);
+    setHata("");
+    try {
+      const data = await yukseltTimer(token);
       await loadCuzdan();
       setHata(data.mesaj);
     } catch (e) {
@@ -283,6 +297,24 @@ export function SomCuzdan() {
                         )}
                       </div>
 
+                      <div className="flex items-center justify-between gap-3 py-2 px-4 bg-white/5 border border-white/10 rounded-sm">
+                        <p className="text-xs text-moon-cream/40">
+                          Geri sayım: <span className="text-copper">{cuzdan?.sure ?? 300}s</span>
+                          {(cuzdan?.sohre_buyuklugu ?? 0) > 0 && (
+                            <span className="text-moon-cream/30"> (-{cuzdan?.sohre_buyuklugu * 5}%)</span>
+                          )}
+                        </p>
+                        {cuzdan && (cuzdan.sohre_buyuklugu ?? 0) < 10 && (
+                          <button
+                            onClick={handleYukseltTimer}
+                            disabled={loading || (cuzdan?.som ?? 0) < 10}
+                            className="flex items-center gap-1 px-3 py-1 border border-copper/30 text-copper text-[10px] rounded-sm hover:bg-copper/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all"
+                          >
+                            <ArrowUp className="w-3 h-3" /> 10§ -5%
+                          </button>
+                        )}
+                      </div>
+
                       <div className="space-y-2">
                         <p className="text-xs text-moon-cream/40 uppercase tracking-wider">Deyiş Gir</p>
                         <div className="flex gap-2">
@@ -299,7 +331,7 @@ export function SomCuzdan() {
                             disabled={loading || !deyis.trim() || countdown > 0}
                             className="px-4 py-2 bg-copper/20 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/30 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all whitespace-nowrap"
                           >
-                            {countdown > 0 ? `${countdown}s` : "Kazan"}
+                            {countdown > 0 ? `${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, "0")}` : "Kazan"}
                           </button>
                         </div>
 
