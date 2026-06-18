@@ -314,7 +314,7 @@ export function SomCuzdan() {
                           </div>
                         )}
 
-                        {sonuc && (
+                        {countdown === 0 && sonuc && (
                           <div className={`py-3 px-4 bg-white/5 border border-white/10 rounded-sm text-center text-sm ${sonucMesaji(sonuc).renk}`}>
                             {sonucMesaji(sonuc).text}
                           </div>
