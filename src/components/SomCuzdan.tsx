@@ -300,7 +300,7 @@ export function SomCuzdan() {
                       <div className="flex items-center gap-3 py-3 px-4 bg-white/5 border border-white/10 rounded-sm">
                         <span className="text-2xl text-copper font-serif">§</span>
                         <div>
-                          <p className="text-xs text-moon-cream/40">BAKİYE</p>
+                          <p className="text-xs text-moon-cream/40">SOM BAKİYE</p>
                           <p className="text-lg font-serif text-copper">{cuzdan?.som ?? 0} §</p>
                         </div>
                       </div>
