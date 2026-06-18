@@ -73,7 +73,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (authenticated) load(); }, [authenticated, load]);
 
   const handleEdit = async (w: WordEntry) => {
     setCurrent(w);
