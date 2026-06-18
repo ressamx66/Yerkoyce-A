@@ -225,17 +225,42 @@ export default async function handler(req, res) {
       const redis = getRedis();
       if (!redis) return json(res, 503, { error: "Redis baglantisi yok" });
       await seedDeyisler();
-      const valid = await redis.sismember(DEYISLER_KEY, normalized);
-      if (!valid) return json(res, 400, { error: "Gecersiz deyis" });
       const user = await getUser(username);
       if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
-      if ((user.kazanilan || []).includes(normalized))
-        return json(res, 400, { error: "Bu deyisi zaten kazandiniz" });
-      user.kazanilan = user.kazanilan || [];
-      user.kazanilan.push(normalized);
-      user.som = (user.som || 0) + 1;
+      const today = new Date().toISOString().slice(0, 10);
+      if (user.gun !== today) {
+        user.gun = today;
+        user.hak = 10;
+        user.bugunku = [];
+      }
+      if ((user.hak ?? 10) <= 0) return json(res, 400, { error: "Bugunluk hakkınız kalmadi" });
+      const valid = await redis.sismember(DEYISLER_KEY, normalized);
+      let sonuc;
+      if (!valid) sonuc = "gecersiz";
+      else if ((user.bugunku || []).includes(normalized)) sonuc = "tekrar";
+      else sonuc = "kazanildi";
+      user.hak = (user.hak ?? 10) - 1;
+      user.bugunku = user.bugunku || [];
+      user.bugunku.push(normalized);
+      if (sonuc === "kazanildi") {
+        user.kazanilan = user.kazanilan || [];
+        user.kazanilan.push(normalized);
+        user.som = (user.som || 0) + 1;
+      }
+      user.pending = { deyis: normalized, sonuc, timestamp: Date.now() };
       await saveUser(username, user);
-      return json(res, 200, { som: user.som, deyis: normalized, mesaj: "Tebrikler! 1 SOM kazandiniz." });
+      return json(res, 200, { bekleme: 60, hak_kaldi: user.hak });
+    }
+
+    if (path.length === 2 && path[0] === "som" && path[1] === "sonuc" && method === "GET") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const user = await getUser(username);
+      if (!user || !user.pending) return json(res, 200, { sonuc: null });
+      const result = user.pending;
+      delete user.pending;
+      await saveUser(username, user);
+      return json(res, 200, result);
     }
 
     if (path.length === 1 && path[0] === "som" && method === "GET") {

@@ -93,10 +93,16 @@ export function login(username: string, password: string) {
 }
 
 export function submitDeyis(token: string, deyis: string) {
-  return fetcher<{ som: number; deyis: string; mesaj: string }>("/som", {
+  return fetcher<{ bekleme: number; hak_kaldi: number }>("/som", {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify({ deyis }),
+  });
+}
+
+export function getSonuc(token: string) {
+  return fetcher<{ deyis: string; sonuc: "kazanildi" | "gecersiz" | "tekrar" | null }>("/som/sonuc", {
+    headers: authHeaders(token),
   });
 }
 
