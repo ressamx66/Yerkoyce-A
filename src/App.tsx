@@ -4,6 +4,7 @@ import { Hero } from "./components/Hero";
 import { DictionaryGrid } from "./components/DictionaryGrid";
 import { WordModal } from "./components/WordModal";
 import { ContactModal } from "./components/ContactModal";
+import { SecretCode } from "./components/SecretCode";
 import { AdminPanel } from "./admin/AdminPanel";
 import { words as staticWords } from "./data";
 import { fetchWords } from "./api";
@@ -60,6 +61,7 @@ export default function App() {
         </div>
       </footer>
 
+      <SecretCode />
       <ContactModal />
 
       <AnimatePresence mode="wait">
