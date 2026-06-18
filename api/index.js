@@ -156,8 +156,6 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return json(res, 200, {});
 
-  seedDeyisler().catch(() => {});
-
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const path = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
   const method = req.method;
@@ -180,6 +178,9 @@ export default async function handler(req, res) {
     }
 
     if (path.length === 3 && path[0] === "words" && path[1] && path[2] === "restore" && method === "POST") {
+      return json(res, 404, { error: "Not found" });
+    }
+
     if (path.length === 2 && path[0] === "admin" && path[1] === "auth" && method === "POST") {
       const pw = process.env.ADMIN_PASSWORD;
       if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
@@ -223,6 +224,7 @@ export default async function handler(req, res) {
       const normalized = deyis.trim().toLowerCase();
       const redis = getRedis();
       if (!redis) return json(res, 503, { error: "Redis baglantisi yok" });
+      await seedDeyisler();
       const valid = await redis.sismember(DEYISLER_KEY, normalized);
       if (!valid) return json(res, 400, { error: "Gecersiz deyis" });
       const user = await getUser(username);
@@ -247,6 +249,7 @@ export default async function handler(req, res) {
     if (path.length === 2 && path[0] === "som" && path[1] === "siralama" && method === "GET") {
       const redis = getRedis();
       if (!redis) return json(res, 200, []);
+      await seedDeyisler();
       const keys = await redis.keys(USERS_KEY_PREFIX + "*");
       const users = await Promise.all(keys.map(async (k) => {
         const data = await redis.get(k);
@@ -255,71 +258,6 @@ export default async function handler(req, res) {
       }));
       users.sort((a, b) => b.som - a.som);
       return json(res, 200, users.slice(0, 50));
-    }
-
-    return json(res, 404, { error: "Not found" });
-    }
-
-    if (path.length === 2 && path[0] === "words" && method === "GET") {
-      const words = await readWords();
-      const word = words.find((w) => w.id === path[1]);
-      if (!word) return json(res, 404, { error: "Bulunamadı" });
-      return json(res, 200, word);
-    }
-
-    if (path.length === 2 && path[0] === "words" && method === "PUT") {
-      const words = await readWords();
-      const idx = words.findIndex((w) => w.id === path[1]);
-      if (idx === -1) return json(res, 404, { error: "Bulunamadı" });
-      words[idx] = { ...words[idx], ...body };
-      await writeWords(words);
-      return json(res, 200, { word: words[idx] });
-    }
-
-    if (path.length === 2 && path[0] === "words" && method === "DELETE") {
-      const words = await readWords();
-      const filtered = words.filter((w) => w.id !== path[1]);
-      if (filtered.length === words.length) return json(res, 404, { error: "Bulunamadı" });
-      await writeWords(filtered);
-      return json(res, 200, { success: true });
-    }
-
-    if (path.length === 1 && path[0] === "vote" && method === "POST") {
-      const { wordId, button } = body;
-      if (!wordId || !button) return json(res, 400, { error: "Eksik bilgi" });
-      return json(res, 200, { remaining: 3, ratings: {} });
-    }
-
-    if (path.length === 2 && path[0] === "votes" && path[1] === "status" && method === "GET") {
-      return json(res, 200, { remaining: 3, ratings: {} });
-    }
-
-    if (path.length === 1 && path[0] === "messages" && method === "POST") {
-      const { text, contact } = body;
-      if (!text || !text.trim()) return json(res, 400, { error: "Mesaj gerekli" });
-      const messages = await readMessages();
-      messages.unshift({
-        id: Date.now().toString(),
-        text: text.trim(),
-        contact: contact?.trim() || "",
-        date: new Date().toISOString()
-      });
-      await writeMessages(messages);
-      return json(res, 200, { success: true });
-    }
-
-    if (path.length === 1 && path[0] === "messages" && method === "GET") {
-      const pw = process.env.ADMIN_PASSWORD;
-      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
-      if (url.searchParams.get("password") !== pw) return json(res, 401, { error: "Yetkisiz" });
-      return json(res, 200, await readMessages());
-    }
-
-    if (path.length === 2 && path[0] === "admin" && path[1] === "auth" && method === "POST") {
-      const pw = process.env.ADMIN_PASSWORD;
-      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
-      if (body.password === pw) return json(res, 200, { authenticated: true });
-      return json(res, 401, { error: "Hatali sifre" });
     }
 
     return json(res, 404, { error: "Not found" });
