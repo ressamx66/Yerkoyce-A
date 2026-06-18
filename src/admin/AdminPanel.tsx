@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { WordEntry } from "../types";
-import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion, adminAuth, fetchMessages, adminSom } from "../api";
+import { fetchWords, updateWord, createWord, deleteWord, fetchVersions, restoreVersion, adminAuth, fetchMessages, adminSom, fetchLogs } from "../api";
 import { WordEditor } from "./WordEditor";
 
 type View = "list" | "edit" | "new";
@@ -17,11 +17,13 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [tab, setTab] = useState<"words" | "messages">("words");
+  const [tab, setTab] = useState<"words" | "messages" | "logs">("words");
   const [messages, setMessages] = useState<{ id: string; text: string; contact: string; date: string }[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [somCommand, setSomCommand] = useState("");
   const [somStatus, setSomStatus] = useState("");
+  const [logs, setLogs] = useState<{ id: string; type: string; details: string; timestamp: string }[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   const handleLogin = async () => {
     setAuthLoading(true);
@@ -90,8 +92,20 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     setMessagesLoading(false);
   }, [authPassword]);
 
+  const loadLogs = useCallback(async () => {
+    const pw = authPassword || sessionStorage.getItem("yerkoyce_admin_pw");
+    if (!pw) return;
+    setLogsLoading(true);
+    try {
+      const data = await fetchLogs(pw);
+      setLogs(data);
+    } catch {}
+    setLogsLoading(false);
+  }, [authPassword]);
+
   useEffect(() => { if (authenticated) load(); }, [authenticated, load]);
   useEffect(() => { if (authenticated && tab === "messages") loadMessages(); }, [authenticated, tab, loadMessages]);
+  useEffect(() => { if (authenticated && tab === "logs") loadLogs(); }, [authenticated, tab, loadLogs]);
 
   const handleEdit = async (w: WordEntry) => {
     setCurrent(w);
@@ -219,6 +233,12 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           >
             Mesajlar {messages.length > 0 && `(${messages.length})`}
           </button>
+          <button
+            onClick={() => setTab("logs")}
+            className={`pb-2 text-xs uppercase tracking-wider cursor-pointer transition-colors ${tab === "logs" ? "text-copper border-b-2 border-copper" : "text-moon-cream/40 hover:text-moon-cream/60"}`}
+          >
+            LOG
+          </button>
         </div>
 
         {/* SOM Komut Satırı */}
@@ -287,6 +307,41 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             ))}
             <button
               onClick={loadMessages}
+              className="mt-4 px-4 py-2 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/20 cursor-pointer"
+            >
+              Yenile
+            </button>
+          </div>
+        )}
+
+        {tab === "logs" && (
+          <div className="space-y-3">
+            {logsLoading && <p className="text-xs text-moon-cream/40">Yükleniyor...</p>}
+            {!logsLoading && logs.length === 0 && (
+              <p className="text-xs text-moon-cream/40">Henüz log yok.</p>
+            )}
+            {logs.map((l) => (
+              <div key={l.id} className="flex items-start gap-3 p-3 bg-white/5 border border-white/10 rounded-sm">
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-sm shrink-0 ${
+                  l.type === "word_edit" ? "bg-blue-500/20 text-blue-400" :
+                  l.type === "word_create" ? "bg-green-500/20 text-green-400" :
+                  l.type === "word_delete" ? "bg-red-500/20 text-red-400" :
+                  l.type === "som_change" ? "bg-copper/20 text-copper" :
+                  "bg-white/10 text-moon-cream/60"
+                }`}>
+                  {l.type === "word_edit" ? "DÜZENLE" :
+                   l.type === "word_create" ? "YENİ" :
+                   l.type === "word_delete" ? "SİL" :
+                   l.type === "som_change" ? "SOM" : l.type}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-moon-cream/80">{l.details}</p>
+                  <p className="text-[10px] text-moon-cream/40 mt-1">{new Date(l.timestamp).toLocaleString("tr-TR")}</p>
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={loadLogs}
               className="mt-4 px-4 py-2 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/20 cursor-pointer"
             >
               Yenile

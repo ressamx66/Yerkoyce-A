@@ -72,6 +72,12 @@ export function adminSom(password: string, amount: number, username: string) {
   });
 }
 
+export function fetchLogs(password: string) {
+  return fetcher<{ id: string; type: string; details: string; timestamp: string }[]>(
+    `/admin/logs?password=${encodeURIComponent(password)}`
+  );
+}
+
 export function sendMessage(text: string, contact?: string) {
   return fetcher<{ success: boolean }>("/messages", {
     method: "POST",

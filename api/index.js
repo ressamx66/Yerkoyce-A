@@ -10,6 +10,7 @@ const MESSAGES_KEY = "yerkoyce:messages";
 const USERS_KEY_PREFIX = "som:users:";
 const SESSIONS_KEY_PREFIX = "som:sessions:";
 const DEYISLER_KEY = "som:deyisler";
+const LOGS_KEY = "yerkoyce:logs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -76,6 +77,31 @@ async function readMessages() {
 async function writeMessages(msgs) {
   const redis = getRedis();
   if (redis) await redis.set(MESSAGES_KEY, msgs);
+}
+
+async function readLogs() {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const cached = await redis.get(LOGS_KEY);
+      if (cached) return cached;
+    } catch {}
+  }
+  return [];
+}
+
+async function addLog(type, details) {
+  const redis = getRedis();
+  if (!redis) return;
+  const logs = await readLogs();
+  logs.unshift({
+    id: Date.now().toString(),
+    type,
+    details,
+    timestamp: new Date().toISOString()
+  });
+  if (logs.length > 500) logs.length = 500;
+  await redis.set(LOGS_KEY, logs);
 }
 
 async function seedDeyisler() {
@@ -170,7 +196,28 @@ export default async function handler(req, res) {
       const words = await readWords();
       words.push({ id: Date.now().toString(), ...body });
       await writeWords(words);
+      addLog("word_create", `Yeni yazı: ${body.word || "Adsız"}`);
       return json(res, 200, { id: words[words.length - 1].id });
+    }
+
+    if (path.length === 2 && path[0] === "words" && path[1] && method === "PUT") {
+      const words = await readWords();
+      const idx = words.findIndex((w) => w.id === path[1]);
+      if (idx === -1) return json(res, 404, { error: "Bulunamadı" });
+      words[idx] = { ...words[idx], ...body };
+      await writeWords(words);
+      addLog("word_edit", `Güncellendi: ${words[idx].word}`);
+      return json(res, 200, { word: words[idx] });
+    }
+
+    if (path.length === 2 && path[0] === "words" && path[1] && method === "DELETE") {
+      const words = await readWords();
+      const target = words.find((w) => w.id === path[1]);
+      const filtered = words.filter((w) => w.id !== path[1]);
+      if (filtered.length === words.length) return json(res, 404, { error: "Bulunamadı" });
+      await writeWords(filtered);
+      addLog("word_delete", `Silindi: ${target?.word || path[1]}`);
+      return json(res, 200, { success: true });
     }
 
     if (path.length === 3 && path[0] === "words" && path[1] && path[2] === "versions" && method === "GET") {
@@ -200,7 +247,15 @@ export default async function handler(req, res) {
       const newSom = Math.max(0, (user.som || 0) + amount);
       user.som = newSom;
       await saveUser(username, user);
+      addLog("som_change", `Admin: ${username} → ${amount >= 0 ? "+" : ""}${amount} SOM (yeni: ${newSom})`);
       return json(res, 200, { username, som: newSom, eklenen: amount });
+    }
+
+    if (path.length === 2 && path[0] === "admin" && path[1] === "logs" && method === "GET") {
+      const pw = process.env.ADMIN_PASSWORD;
+      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
+      if (url.searchParams.get("password") !== pw) return json(res, 401, { error: "Yetkisiz" });
+      return json(res, 200, await readLogs());
     }
 
     // --- SOM Cüzdan ---
