@@ -8,7 +8,8 @@ interface YagmurProps {
   yaprakSayaci: number;
   kitapSayaci: number;
   saatIndirim: number;
-  onUpdate: (data: { som?: number; hak?: number; yaprak_sayaci?: number; kitap_sayaci?: number; saat_indirim?: number }) => void;
+  yagmurTiklama: number;
+  onUpdate: (data: { som?: number; hak?: number; yaprak_sayaci?: number; kitap_sayaci?: number; saat_indirim?: number; yagmur_tiklama?: number }) => void;
 }
 
 type DropTur = "som" | "kitap" | "yaprak" | "saat";
@@ -27,7 +28,7 @@ interface Popup {
 }
 
 const DROP_INTERVAL = 10000;
-const FALL_DURATION = 7000;
+const BASE_FALL_DURATION = 7000;
 
 const EMOJI_MAP: Record<DropTur, string> = {
   som: "💰",
@@ -53,11 +54,14 @@ function randomTur(): DropTur {
   return "som";
 }
 
-export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kitap, saatIndirim, onUpdate }: YagmurProps) {
+export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kitap, saatIndirim, yagmurTiklama, onUpdate }: YagmurProps) {
   const [drops, setDrops] = useState<Drop[]>([]);
   const [popups, setPopups] = useState<Popup[]>([]);
   const loadingRef = useRef(false);
   const idRef = useRef(0);
+
+  const hizKatsayisi = 1 + yagmurTiklama * 0.01;
+  const fallDuration = Math.round(BASE_FALL_DURATION / hizKatsayisi);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -71,10 +75,10 @@ export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kit
       setDrops(prev => [...prev, drop]);
       setTimeout(() => {
         setDrops(prev => prev.filter(d => d.id !== drop.id));
-      }, FALL_DURATION);
+      }, fallDuration);
     }, DROP_INTERVAL);
     return () => clearInterval(interval);
-  }, []);
+  }, [fallDuration]);
 
   const handleClick = useCallback(async (drop: Drop) => {
     if (loadingRef.current) return;
@@ -96,10 +100,15 @@ export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kit
 
   return (
     <div className="relative min-h-[280px] overflow-hidden rounded-sm">
-      <div className="flex gap-4 mb-2 text-xs text-moon-cream/50 flex-wrap">
+      <div className="flex gap-3 mb-2 text-xs text-moon-cream/50 flex-wrap">
         <span>📖 <span className="text-copper">{kitap}</span>/10</span>
         <span>🍂 <span className="text-copper">{yaprak}</span>/10</span>
         <span>⏱ <span className="text-copper">-{saatIndirim}s</span></span>
+      </div>
+
+      <div className="flex gap-4 mb-2 text-[10px] text-moon-cream/40">
+        <span>Düşme aralığı: <span className="text-copper">10sn</span></span>
+        <span>Düşme hızı: <span className="text-copper">{hizKatsayisi.toFixed(2)}</span></span>
       </div>
 
       <div className="text-[10px] text-moon-cream/30 mb-3 leading-relaxed">
@@ -113,7 +122,7 @@ export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kit
           className="absolute text-2xl cursor-pointer select-none hover:scale-125 transition-transform z-10"
           style={{
             left: `${drop.x}%`,
-            animation: `yagmurFall ${FALL_DURATION}ms linear forwards`,
+            animation: `yagmurFall ${fallDuration}ms linear forwards`,
           }}
         >
           {drop.emoji}

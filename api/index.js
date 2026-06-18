@@ -188,6 +188,7 @@ function checkRainDailyReset(user) {
     user.yaprak_sayaci = 0;
     user.kitap_sayaci = 0;
     user.saat_indirim = 0;
+    user.yagmur_tiklama = 0;
     user.yagmur_gun = today;
   }
   return user;
@@ -411,7 +412,7 @@ export default async function handler(req, res) {
         return json(res, 400, { error: "Kullanici adi (en az 2) ve sifre (en az 3) gerekli" });
       const existing = await getUser(username);
       if (existing) return json(res, 409, { error: "Bu kullanici adi zaten var" });
-      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], madalyalar: { bronz: 0, gumus: 0, altin: 0 }, son_madalya: {}, created_at: new Date().toISOString(), yaprak_sayaci: 0, kitap_sayaci: 0, saat_indirim: 0, yagmur_gun: "" };
+      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], madalyalar: { bronz: 0, gumus: 0, altin: 0 }, son_madalya: {}, created_at: new Date().toISOString(), yaprak_sayaci: 0, kitap_sayaci: 0, saat_indirim: 0, yagmur_tiklama: 0, yagmur_gun: "" };
       await saveUser(username, user);
       const token = generateToken();
       const redis = getRedis();
@@ -509,6 +510,7 @@ export default async function handler(req, res) {
         yaprak_sayaci: user.yaprak_sayaci || 0,
         kitap_sayaci: user.kitap_sayaci || 0,
         saat_indirim: user.saat_indirim || 0,
+        yagmur_tiklama: user.yagmur_tiklama || 0,
         created_at: user.created_at
       });
     }
@@ -613,6 +615,7 @@ export default async function handler(req, res) {
         user.gun = today;
         user.hak = Math.min(20, 10 + (user.bonus_hak || 0));
       }
+      user.yagmur_tiklama = (user.yagmur_tiklama || 0) + 1;
       let extra = {};
       if (tur === "som") {
         user.som = (user.som || 0) + 0.01;
@@ -640,7 +643,7 @@ export default async function handler(req, res) {
         extra = { saat_indirim: user.saat_indirim };
       }
       await saveUser(username, user);
-      return json(res, 200, { som: user.som, hak: user.hak, ...extra });
+      return json(res, 200, { som: user.som, hak: user.hak, yagmur_tiklama: user.yagmur_tiklama, ...extra });
     }
 
     return json(res, 404, { error: "Not found" });

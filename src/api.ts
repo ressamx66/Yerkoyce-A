@@ -120,7 +120,7 @@ export function getSonuc(token: string) {
 }
 
 export function getCuzdan(token: string) {
-  return fetcher<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; kitap_sayaci: number; saat_indirim: number; created_at: string }>("/som", {
+  return fetcher<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; kitap_sayaci: number; saat_indirim: number; yagmur_tiklama: number; created_at: string }>("/som", {
     headers: authHeaders(token),
   });
 }
@@ -150,7 +150,7 @@ export function yukseltTimer(token: string) {
 }
 
 export function yagmurTopla(token: string, tur: "som" | "kitap" | "yaprak" | "saat") {
-  return fetcher<{ som: number; hak: number; artis?: number; kitap_sayaci?: number; deyis_kazandi?: boolean; deyis?: string; yaprak_sayaci?: number; hak_kazandi?: boolean; saat_indirim?: number }>("/yagmur/topla", {
+  return fetcher<{ som: number; hak: number; yagmur_tiklama: number; artis?: number; kitap_sayaci?: number; deyis_kazandi?: boolean; deyis?: string; yaprak_sayaci?: number; hak_kazandi?: boolean; saat_indirim?: number }>("/yagmur/topla", {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify({ tur }),
