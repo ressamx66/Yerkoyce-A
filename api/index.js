@@ -180,14 +180,16 @@ function normalizeKazanimlar(arr) {
 }
 
 function countKazanimByTip(arr, tip) {
-  const now = Date.now();
+  const now = new Date();
+  const yil = now.getFullYear();
+  const ay = now.getMonth();
+  const gun = now.getDate();
   let cutoff;
-  if (tip === "gunluk") cutoff = now - 86400000;
-  else if (tip === "haftalik") cutoff = now - 7 * 86400000;
-  else if (tip === "aylik") cutoff = now - 30 * 86400000;
+  if (tip === "gunluk") cutoff = new Date(yil, ay, gun).getTime();
+  else if (tip === "haftalik") cutoff = new Date(yil, ay, gun - ((now.getDay() + 6) % 7)).getTime();
+  else if (tip === "aylik") cutoff = new Date(yil, ay, 1).getTime();
   else cutoff = 0;
-  const normalized = normalizeKazanimlar(arr);
-  return normalized.filter((e) => e.time >= cutoff).length;
+  return normalizeKazanimlar(arr).filter((e) => e.time >= cutoff).length;
 }
 
 function json(res, status, data) {

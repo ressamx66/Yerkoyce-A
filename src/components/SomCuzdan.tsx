@@ -16,6 +16,7 @@ export function SomCuzdan() {
   const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: string[] } | null>(null);
   const [siralama, setSiralama] = useState<{ username: string; adet: number }[]>([]);
   const [siralamaTip, setSiralamaTip] = useState("genel");
+  const [showInfo, setShowInfo] = useState(false);
   const [deyis, setDeyis] = useState("");
   const [hata, setHata] = useState("");
   const [loading, setLoading] = useState(false);
@@ -378,7 +379,7 @@ export function SomCuzdan() {
 
                   {tab === "siralama" && (
                     <div className="space-y-2">
-                      <div className="flex gap-2 border-b border-white/10 pb-2">
+                      <div className="flex gap-2 border-b border-white/10 pb-2 items-end">
                         {[
                           { key: "gunluk", label: "Günlük" },
                           { key: "haftalik", label: "Haftalık" },
@@ -393,7 +394,21 @@ export function SomCuzdan() {
                             {t.label}
                           </button>
                         ))}
+                        <button
+                          onClick={() => setShowInfo(!showInfo)}
+                          className="ml-auto text-[10px] w-5 h-5 rounded-full border border-white/10 flex items-center justify-center text-moon-cream/30 hover:text-moon-cream/60 cursor-pointer"
+                          title="Nasıl hesaplanır?"
+                        >?</button>
                       </div>
+
+                      {showInfo && (
+                        <div className="text-[10px] text-moon-cream/50 leading-relaxed p-3 bg-white/5 border border-white/10 rounded-sm space-y-1">
+                          <p><b className="text-moon-cream/70">Günlük:</b> Bugün saat 00:00'dan itibaren kazanılan deyişler</p>
+                          <p><b className="text-moon-cream/70">Haftalık:</b> Bu Pazartesi 00:00'dan itibaren kazanılan deyişler</p>
+                          <p><b className="text-moon-cream/70">Aylık:</b> Bu ayın 1'i 00:00'dan itibaren kazanılan deyişler</p>
+                          <p><b className="text-moon-cream/70">Genel:</b> Tüm zamanlar boyunca kazanılan deyişler</p>
+                        </div>
+                      )}
                       <div className="space-y-1 max-h-52 overflow-y-auto">
                         {siralama.length === 0 && (
                           <p className="text-xs text-moon-cream/40">Henüz veri yok.</p>
