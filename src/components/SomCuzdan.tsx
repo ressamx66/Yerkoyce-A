@@ -496,8 +496,13 @@ export function SomCuzdan() {
                   )}
                   </div>
                 )}
-                <div className="mt-4 pt-3 border-t border-white/10 text-[10px] text-moon-cream/30 leading-relaxed">
-                  <p><b className="text-moon-cream/50">Kurallar:</b> Her deyiş Y911 listesinde olmalıdır. Son 7 gün içinde başkası tarafından girilmiş deyişler geçersiz sayılır. Günlük 10 hak (max 20). Geri sayım 5dk (10§ ile %5 kısalır, max 10). Madalyalar dönem sonunda birinciye verilir: gün→bronz, hafta→gümüş, ay→altın.</p>
+                <div className="mt-4 pt-3 border-t border-white/10 text-xs text-moon-cream/30 leading-relaxed space-y-1">
+                  <p><b className="text-moon-cream/50">Kurallar:</b></p>
+                  <p>• "Yerköyce - İç Anadolu'dan Deyişler" kitabındaki deyişleri yazmalısınız.</p>
+                  <p>• Son 7 gün içinde başkası tarafından girilmiş deyişler geçersiz sayılır.</p>
+                  <p>• Günlük 10 hak (max 20 bonus ile). Geri sayım 5dk (10§ ile %5 kısalır, max 10).</p>
+                  <p>• Madalyalar dönem sonunda birinciye verilir: gün→bronz, hafta→gümüş, ay→altın.</p>
+                  <p className="text-yellow-400/70 font-serif">🥇 Altın sıralamasında birinci olan oyuncuya, yazar tarafından imzalı "Yerköyce - İç Anadolu'dan Deyişler" kitabı hediye edilecektir!</p>
                 </div>
               </motion.div>
           </motion.div>
