@@ -120,7 +120,7 @@ export function getSonuc(token: string) {
 }
 
 export function getCuzdan(token: string) {
-  return fetcher<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; created_at: string }>("/som", {
+  return fetcher<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; saat_indirim: number; created_at: string }>("/som", {
     headers: authHeaders(token),
   });
 }
@@ -146,6 +146,14 @@ export function yukseltTimer(token: string) {
   return fetcher<{ som: number; sohre_buyuklugu: number; sure: number; mesaj: string }>("/som/yukselt-timer", {
     method: "POST",
     headers: authHeaders(token),
+  });
+}
+
+export function yagmurTopla(token: string, tur: "som" | "deyis" | "yaprak" | "saat") {
+  return fetcher<{ som: number; hak: number; artis?: number; deyis?: string; yaprak_sayaci?: number; hak_kazandi?: boolean; saat_indirim?: number }>("/yagmur/topla", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ tur }),
   });
 }
 

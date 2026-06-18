@@ -182,6 +182,16 @@ function checkMonthlyReset(user) {
   return user;
 }
 
+function checkRainDailyReset(user) {
+  const today = todayStr();
+  if (user.yagmur_gun !== today) {
+    user.yaprak_sayaci = 0;
+    user.saat_indirim = 0;
+    user.yagmur_gun = today;
+  }
+  return user;
+}
+
 const BASE_COUNTDOWN = 300;
 const COUNTDOWN_DISCOUNT = 0.95;
 const MAX_TIMER_UPGRADES = 10;
@@ -400,7 +410,7 @@ export default async function handler(req, res) {
         return json(res, 400, { error: "Kullanici adi (en az 2) ve sifre (en az 3) gerekli" });
       const existing = await getUser(username);
       if (existing) return json(res, 409, { error: "Bu kullanici adi zaten var" });
-      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], madalyalar: { bronz: 0, gumus: 0, altin: 0 }, son_madalya: {}, created_at: new Date().toISOString() };
+      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], madalyalar: { bronz: 0, gumus: 0, altin: 0 }, son_madalya: {}, created_at: new Date().toISOString(), yaprak_sayaci: 0, saat_indirim: 0, yagmur_gun: "" };
       await saveUser(username, user);
       const token = generateToken();
       const redis = getRedis();
@@ -432,6 +442,7 @@ export default async function handler(req, res) {
       const user = await getUser(username);
       if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
       checkMonthlyReset(user);
+      checkRainDailyReset(user);
       const today = new Date().toISOString().slice(0, 10);
       if (user.gun !== today) {
         user.gun = today;
@@ -456,7 +467,8 @@ export default async function handler(req, res) {
       }
       user.pending = { deyis: normalized, sonuc, timestamp: Date.now() };
       await saveUser(username, user);
-      const bekleme = getCountdownDuration(user.sohre_buyuklugu || 0);
+      const baseSure = getCountdownDuration(user.sohre_buyuklugu || 0);
+      const bekleme = Math.max(10, baseSure - (user.saat_indirim || 0));
       return json(res, 200, { bekleme, hak_kaldi: user.hak });
     }
 
@@ -477,6 +489,7 @@ export default async function handler(req, res) {
       const user = await getUser(username);
       if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
       checkMonthlyReset(user);
+      checkRainDailyReset(user);
       const today = new Date().toISOString().slice(0, 10);
       if (user.gun !== today) {
         user.gun = today;
@@ -489,9 +502,11 @@ export default async function handler(req, res) {
         hak: user.hak ?? (10 + (user.bonus_hak || 0)),
         bonus_hak: user.bonus_hak || 0,
         sohre_buyuklugu: user.sohre_buyuklugu || 0,
-        sure: getCountdownDuration(user.sohre_buyuklugu || 0),
+        sure: Math.max(10, getCountdownDuration(user.sohre_buyuklugu || 0) - (user.saat_indirim || 0)),
         kazanilan: normalizeKazanimlar(user.kazanilan),
         madalyalar,
+        yaprak_sayaci: user.yaprak_sayaci || 0,
+        saat_indirim: user.saat_indirim || 0,
         created_at: user.created_at
       });
     }
@@ -577,6 +592,46 @@ export default async function handler(req, res) {
       await saveUser(username, user);
       addLog("som_change", `${username}: 10 ${tur} → 1 ${tur === "bronz" ? "gumus" : "altin"} takas`);
       return json(res, 200, { madalyalar: m, mesaj: "Takas basarili!" });
+    }
+
+    // --- Yağmur (Rain Drop) ---
+    if (path.length === 2 && path[0] === "yagmur" && path[1] === "topla" && method === "POST") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const { tur } = body;
+      if (!["som", "deyis", "yaprak", "saat"].includes(tur))
+        return json(res, 400, { error: "Gecersiz tur" });
+      const redis = getRedis();
+      if (!redis) return json(res, 503, { error: "Redis baglantisi yok" });
+      const user = await getUser(username);
+      if (!user) return json(res, 404, { error: "Kullanici bulunamadi" });
+      checkRainDailyReset(user);
+      const today = todayStr();
+      if (user.gun !== today) {
+        user.gun = today;
+        user.hak = Math.min(20, 10 + (user.bonus_hak || 0));
+      }
+      let extra = {};
+      if (tur === "som") {
+        user.som = (user.som || 0) + 0.01;
+        extra = { artis: 0.01 };
+      } else if (tur === "deyis") {
+        const idx = Math.floor(Math.random() * DEYIS_LIST.length);
+        extra = { deyis: DEYIS_LIST[idx] };
+      } else if (tur === "yaprak") {
+        user.yaprak_sayaci = (user.yaprak_sayaci || 0) + 1;
+        let hakKazandi = false;
+        if (user.yaprak_sayaci % 10 === 0) {
+          user.hak = (user.hak ?? 10) + 1;
+          hakKazandi = true;
+        }
+        extra = { yaprak_sayaci: user.yaprak_sayaci, hak_kazandi: hakKazandi };
+      } else if (tur === "saat") {
+        user.saat_indirim = (user.saat_indirim || 0) + 1;
+        extra = { saat_indirim: user.saat_indirim };
+      }
+      await saveUser(username, user);
+      return json(res, 200, { som: user.som, hak: user.hak, ...extra });
     }
 
     return json(res, 404, { error: "Not found" });

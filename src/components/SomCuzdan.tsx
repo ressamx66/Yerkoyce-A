@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, LogOut, ArrowUp } from "lucide-react";
 import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, getMadalyonlar, yukselt, yukseltTimer, takas } from "../api";
+import { Yagmur } from "./Yagmur";
 
-type Tab = "login" | "register" | "cuzdan" | "siralama" | "madalya";
+type Tab = "login" | "register" | "cuzdan" | "siralama" | "madalya" | "yagmur";
 type SonucTuru = "kazanildi" | "gecersiz" | null;
 
 export function SomCuzdan() {
@@ -13,7 +14,7 @@ export function SomCuzdan() {
   const [password, setPassword] = useState("");
   const [token, setToken] = useState(() => sessionStorage.getItem("som_token"));
   const [somUser, setSomUser] = useState<string | null>(() => sessionStorage.getItem("som_user"));
-  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number } } | null>(null);
+  const [cuzdan, setCuzdan] = useState<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; saat_indirim: number } | null>(null);
   const [siralama, setSiralama] = useState<{ username: string; adet: number }[]>([]);
   const [siralamaTip, setSiralamaTip] = useState("genel");
   const [showInfo, setShowInfo] = useState(false);
@@ -140,6 +141,16 @@ export function SomCuzdan() {
       setHata(e instanceof Error ? e.message : "Hata");
     }
     setLoading(false);
+  };
+
+  const handleYagmurUpdate = (data: { som?: number; hak?: number; yaprak_sayaci?: number; saat_indirim?: number }) => {
+    setCuzdan(prev => prev ? {
+      ...prev,
+      som: data.som ?? prev.som,
+      hak: data.hak ?? prev.hak,
+      yaprak_sayaci: data.yaprak_sayaci ?? prev.yaprak_sayaci,
+      saat_indirim: data.saat_indirim ?? prev.saat_indirim,
+    } : prev);
   };
 
   const handleTakas = async (tur: "bronz" | "gumus") => {
@@ -286,6 +297,12 @@ export function SomCuzdan() {
                       className={`text-xs tracking-wider cursor-pointer ${tab === "madalya" ? "text-copper" : "text-moon-cream/40"}`}
                     >
                       🏅 Madalya
+                    </button>
+                    <button
+                      onClick={() => setTab("yagmur")}
+                      className={`text-xs tracking-wider cursor-pointer ${tab === "yagmur" ? "text-copper" : "text-moon-cream/40"}`}
+                    >
+                      🌧 Yağmur
                     </button>
                     <button
                       onClick={handleLogout}
@@ -523,6 +540,22 @@ export function SomCuzdan() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  {tab === "yagmur" && (
+                    <div className="space-y-2">
+                      {cuzdan ? (
+                        <Yagmur
+                          token={token}
+                          som={cuzdan.som}
+                          hak={cuzdan.hak}
+                          yaprakSayaci={cuzdan.yaprak_sayaci || 0}
+                          saatIndirim={cuzdan.saat_indirim || 0}
+                          onUpdate={handleYagmurUpdate}
+                        />
+                      ) : (
+                        <p className="text-xs text-moon-cream/40">Yükleniyor...</p>
+                      )}
                     </div>
                   )}
                   </div>
