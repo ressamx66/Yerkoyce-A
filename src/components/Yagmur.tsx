@@ -25,8 +25,8 @@ interface Popup {
   x: number;
 }
 
-const DROP_INTERVAL = 4000;
-const FALL_DURATION = 5500;
+const DROP_INTERVAL = 10000;
+const FALL_DURATION = 7000;
 
 const EMOJI_MAP: Record<DropTur, string> = {
   som: "💰",
@@ -111,7 +111,6 @@ export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, saatIndirim, onU
           className="absolute text-2xl cursor-pointer select-none hover:scale-125 transition-transform z-10"
           style={{
             left: `${drop.x}%`,
-            top: "-40px",
             animation: `yagmurFall ${FALL_DURATION}ms linear forwards`,
           }}
         >
@@ -135,8 +134,8 @@ export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, saatIndirim, onU
 
       <style>{`
         @keyframes yagmurFall {
-          0% { transform: translateY(0); opacity: 1; }
-          100% { transform: translateY(340px); opacity: 0.2; }
+          0% { top: -40px; opacity: 1; }
+          100% { top: 340px; opacity: 0.2; }
         }
         @keyframes yagmurPopup {
           0% { opacity: 1; transform: translateY(0); }
