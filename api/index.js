@@ -108,11 +108,9 @@ async function addLog(type, details) {
 
 async function seedDeyisler() {
   const redis = getRedis();
-  if (!redis) return;
-  const exists = await redis.exists(DEYISLER_KEY);
-  if (!exists && DEYIS_LIST.length > 0) {
-    await redis.sadd(DEYISLER_KEY, ...DEYIS_LIST);
-  }
+  if (!redis || DEYIS_LIST.length === 0) return;
+  await redis.del(DEYISLER_KEY);
+  await redis.sadd(DEYISLER_KEY, ...DEYIS_LIST);
 }
 
 function getUserKey(username) {
