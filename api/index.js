@@ -203,6 +203,11 @@ function getCountdownDuration(upgrades) {
   return Math.round(BASE_COUNTDOWN * Math.pow(COUNTDOWN_DISCOUNT, n));
 }
 
+function getEffectiveCountdown(user) {
+  const base = (user.ozel_gerisayim > 0) ? user.ozel_gerisayim : getCountdownDuration(user.sohre_buyuklugu || 0);
+  return Math.max(10, base - (user.saat_indirim || 0));
+}
+
 function normalizeKazanimlar(arr) {
   if (!Array.isArray(arr)) return [];
   return arr.map((e) => (typeof e === "string" ? { deyis: e, time: 0 } : e));
@@ -412,6 +417,21 @@ export default async function handler(req, res) {
       return json(res, 200, { username, aralik });
     }
 
+    if (path.length === 2 && path[0] === "admin" && path[1] === "gerisayim" && method === "POST") {
+      const pw = process.env.ADMIN_PASSWORD;
+      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
+      if (body.password !== pw) return json(res, 401, { error: "Yetkisiz" });
+      const { username, gerisayim } = body;
+      if (!username || typeof gerisayim !== "number" || isNaN(gerisayim) || gerisayim < 1)
+        return json(res, 400, { error: "Gecersiz komut. Ornek: /gerisayim Derya 10" });
+      const user = await getUser(username);
+      if (!user) return json(res, 404, { error: "Kullanici bulunamadi: " + username });
+      user.ozel_gerisayim = gerisayim;
+      await saveUser(username, user);
+      addLog("som_change", `Admin: ${username} → ozel gerisayim ${gerisayim}s`);
+      return json(res, 200, { username, gerisayim });
+    }
+
     if (path.length === 2 && path[0] === "admin" && path[1] === "logs" && method === "GET") {
       const pw = process.env.ADMIN_PASSWORD;
       if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
@@ -484,8 +504,7 @@ export default async function handler(req, res) {
       }
       user.pending = { deyis: normalized, sonuc, timestamp: Date.now() };
       await saveUser(username, user);
-      const baseSure = getCountdownDuration(user.sohre_buyuklugu || 0);
-      const bekleme = Math.max(10, baseSure - (user.saat_indirim || 0));
+      const bekleme = getEffectiveCountdown(user);
       return json(res, 200, { bekleme, hak_kaldi: user.hak });
     }
 
@@ -519,7 +538,7 @@ export default async function handler(req, res) {
         hak: user.hak ?? (10 + (user.bonus_hak || 0)),
         bonus_hak: user.bonus_hak || 0,
         sohre_buyuklugu: user.sohre_buyuklugu || 0,
-        sure: Math.max(10, getCountdownDuration(user.sohre_buyuklugu || 0) - (user.saat_indirim || 0)),
+        sure: getEffectiveCountdown(user),
         kazanilan: normalizeKazanimlar(user.kazanilan),
         madalyalar,
         yaprak_sayaci: user.yaprak_sayaci || 0,
@@ -527,6 +546,7 @@ export default async function handler(req, res) {
         saat_indirim: user.saat_indirim || 0,
         yagmur_tiklama: user.yagmur_tiklama || 0,
         yagmur_aralik: user.yagmur_aralik || 0,
+        ozel_gerisayim: user.ozel_gerisayim || 0,
         created_at: user.created_at
       });
     }
