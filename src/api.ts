@@ -134,7 +134,7 @@ export function getSonuc(token: string) {
 }
 
 export function getCuzdan(token: string) {
-  return fetcher<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; kitap_sayaci: number; saat_indirim: number; yagmur_tiklama: number; yagmur_aralik: number; ozel_gerisayim: number; created_at: string }>("/som", {
+  return fetcher<{ username: string; som: number; hak: number; bonus_hak: number; sohre_buyuklugu: number; sure: number; kazanilan: (string | { deyis: string; time: number })[]; girilenler: { deyis: string; time: number; sonuc: string }[]; madalyalar: { bronz: number; gumus: number; altin: number }; yaprak_sayaci: number; kitap_sayaci: number; saat_indirim: number; yagmur_tiklama: number; yagmur_aralik: number; ozel_gerisayim: number; created_at: string }>("/som", {
     headers: authHeaders(token),
   });
 }

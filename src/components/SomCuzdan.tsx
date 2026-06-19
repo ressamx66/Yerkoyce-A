@@ -433,17 +433,20 @@ export function SomCuzdan() {
                         {hata && <p className="text-red-400/80 text-xs">{hata}</p>}
                       </div>
 
-                      {cuzdan && cuzdan.kazanilan.length > 0 && (
+                      {cuzdan && cuzdan.girilenler?.length > 0 && (
                         <div>
                           <p className="text-xs text-moon-cream/40 uppercase tracking-wider mb-2">
-                            Kazanılanlar ({cuzdan.kazanilan.length})
+                            Girilen Deyişler ({cuzdan.girilenler.length})
                           </p>
                           <div className="max-h-32 overflow-y-auto space-y-1">
-                            {cuzdan.kazanilan.map((k, idx) => {
-                              const deyis = typeof k === "string" ? k : k.deyis;
+                            {cuzdan.girilenler.map((g, idx) => {
+                              const ok = g.sonuc === "kazanildi";
+                              const sebep = g.sonuc === "liste_yok" ? "Listede yok" : g.sonuc === "son_7_gun" ? "Son 7 gün" : "";
                               return (
-                                <div key={idx} className="text-xs text-moon-cream/60 px-2 py-1 bg-white/5 rounded-sm">
-                                  {deyis}
+                                <div key={idx} className={`text-xs px-2 py-1 bg-white/5 rounded-sm flex items-center gap-2 ${ok ? "text-green-400/70" : "text-red-400/60"}`}>
+                                  <span>{ok ? "✓" : "✗"}</span>
+                                  <span className="text-moon-cream/60">{g.deyis}</span>
+                                  {!ok && <span className="ml-auto text-[10px] opacity-60">{sebep}</span>}
                                 </div>
                               );
                             })}

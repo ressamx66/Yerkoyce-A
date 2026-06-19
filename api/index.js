@@ -500,6 +500,9 @@ export default async function handler(req, res) {
         await redis.zadd(SON_DEYISLER_KEY, { score: Date.now(), member: normalized });
         await redis.zremrangebyscore(SON_DEYISLER_KEY, 0, Date.now() - YEDI_GUN_MS);
       }
+      user.girilenler = user.girilenler || [];
+      user.girilenler.push({ deyis: normalized, time: Date.now(), sonuc });
+      if (user.girilenler.length > 100) user.girilenler = user.girilenler.slice(-100);
       user.pending = { deyis: normalized, sonuc, timestamp: Date.now() };
       await saveUser(username, user);
       const bekleme = getEffectiveCountdown(user);
@@ -538,6 +541,7 @@ export default async function handler(req, res) {
         sohre_buyuklugu: user.sohre_buyuklugu || 0,
         sure: getEffectiveCountdown(user),
         kazanilan: normalizeKazanimlar(user.kazanilan),
+        girilenler: (user.girilenler || []).slice().reverse(),
         madalyalar,
         yaprak_sayaci: user.yaprak_sayaci || 0,
         kitap_sayaci: user.kitap_sayaci || 0,
