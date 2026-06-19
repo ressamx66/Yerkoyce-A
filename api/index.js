@@ -488,10 +488,10 @@ export default async function handler(req, res) {
       if ((user.hak ?? 10) <= 0) return json(res, 400, { error: "Bugunluk hakkınız kalmadi" });
       const valid = await redis.sismember(DEYISLER_KEY, normalized);
       let sonuc;
-      if (!valid) sonuc = "gecersiz";
+      if (!valid) sonuc = "liste_yok";
       else {
         const onceki = await redis.zscore(SON_DEYISLER_KEY, normalized);
-        if (onceki !== null && Date.now() - onceki < YEDI_GUN_MS) sonuc = "gecersiz";
+        if (onceki !== null && Date.now() - onceki < YEDI_GUN_MS) sonuc = "son_7_gun";
         else sonuc = "kazanildi";
       }
       user.hak = (user.hak ?? 10) - 1;

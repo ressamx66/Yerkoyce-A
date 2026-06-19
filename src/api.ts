@@ -128,7 +128,7 @@ export function submitDeyis(token: string, deyis: string) {
 }
 
 export function getSonuc(token: string) {
-  return fetcher<{ deyis: string; sonuc: "kazanildi" | "gecersiz" | "tekrar" | null }>("/som/sonuc", {
+  return fetcher<{ deyis: string; sonuc: "kazanildi" | "liste_yok" | "son_7_gun" | null }>("/som/sonuc", {
     headers: authHeaders(token),
   });
 }

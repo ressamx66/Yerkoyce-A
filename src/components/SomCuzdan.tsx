@@ -5,7 +5,7 @@ import { login, register, submitDeyis, getSonuc, getCuzdan, getSiralama, getMada
 import { Yagmur } from "./Yagmur";
 
 type Tab = "login" | "register" | "cuzdan" | "siralama" | "madalya" | "yagmur";
-type SonucTuru = "kazanildi" | "gecersiz" | null;
+type SonucTuru = "kazanildi" | "liste_yok" | "son_7_gun" | null;
 
 export function SomCuzdan() {
   const [open, setOpen] = useState(false);
@@ -193,7 +193,8 @@ export function SomCuzdan() {
   const sonucMesaji = (s: SonucTuru) => {
     switch (s) {
       case "kazanildi": return { text: "✅ Geçerli deyiş! 1 § kazandınız.", renk: "text-green-400/90" };
-      case "gecersiz": return { text: "❌ Geçersiz deyiş (Y911 listesinde yok veya son 7 gün içinde girilmiş)", renk: "text-red-400/80" };
+      case "liste_yok": return { text: "❌ Deyiş Y911 listesinde bulunamadı.", renk: "text-red-400/80" };
+      case "son_7_gun": return { text: "❌ Bu deyiş son 7 gün içinde kullanılmış.", renk: "text-red-400/80" };
       default: return { text: "", renk: "" };
     }
   };
