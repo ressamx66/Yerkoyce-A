@@ -106,6 +106,7 @@ export function Yagmur({ token, som, hak, yaprakSayaci: yaprak, kitapSayaci: kit
         <span>📖 <span className="text-copper">{kitap}</span>/10</span>
         <span>🍂 <span className="text-copper">{yaprak}</span>/10</span>
         <span>⏱ <span className="text-copper">-{saatIndirim}s</span></span>
+        <span>✋ Hak: <span className="text-copper">{hak}</span></span>
       </div>
 
       <div className="flex gap-4 mb-2 text-[10px] text-moon-cream/40">
