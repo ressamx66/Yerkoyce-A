@@ -67,7 +67,7 @@ export function SecretCode() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-serif text-xl text-moon-cream">Terzi Mehmet Amca</h2>
+                <h2 className="font-serif text-xl text-moon-cream">KOD GİRİŞ</h2>
                 <button
                   onClick={() => setOpen(false)}
                   className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-moon-cream/50 hover:text-moon-cream cursor-pointer"
