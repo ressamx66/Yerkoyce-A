@@ -23,7 +23,7 @@ interface PMMessage {
 
 export function Mailbox() {
   const [open, setOpen] = useState(false);
-  const [myUsername, setMyUsername] = useState<string | null>(null);
+  const [myUsername, setMyUsername] = useState<string | null>(() => sessionStorage.getItem("som_user"));
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activePartner, setActivePartner] = useState<string | null>(null);
   const [messages, setMessages] = useState<PMMessage[]>([]);
@@ -36,20 +36,19 @@ export function Mailbox() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const token = sessionStorage.getItem("som_token");
-    if (!token) return;
-    fetch("/api/session-info", {
-      headers: { Authorization: "Bearer " + token },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data && data.username) setMyUsername(data.username);
-      })
-      .catch(() => {});
+    function sync() {
+      setMyUsername(sessionStorage.getItem("som_user"));
+    }
+    window.addEventListener("storage", sync);
+    const interval = setInterval(sync, 2000);
+    return () => {
+      window.removeEventListener("storage", sync);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
-    if (!myUsername) return;
+    if (!myUsername) { setUnreadCount(0); return; }
     refreshUnread();
     const interval = setInterval(refreshUnread, 30000);
     return () => clearInterval(interval);
@@ -109,7 +108,7 @@ export function Mailbox() {
 
   function handleOpen() {
     setOpen(true);
-    loadInbox();
+    if (myUsername) loadInbox();
   }
 
   function handleBack() {
@@ -142,7 +141,47 @@ export function Mailbox() {
     }
   }
 
-  if (!myUsername) return null;
+  if (!myUsername) {
+    return (
+      <>
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-6 right-24 z-40 w-14 h-14 rounded-full bg-copper/90 text-moon-cream shadow-xl hover:bg-copper hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center overflow-hidden"
+          title="Posta Kutusu"
+        >
+          <img src={pkBos} alt="Posta Kutusu" className="w-8 h-8 object-contain" />
+        </button>
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+            >
+              <motion.div
+                className="bg-[#1f1b19] border border-white/10 rounded-xl w-full max-w-md p-8 shadow-2xl text-center"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ duration: 0.3 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="text-moon-cream/60 text-sm mb-4">Mesajlaşmak için önce SOM Cüzdan'a giriş yapmalısınız.</p>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="px-4 py-2 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/20 cursor-pointer"
+                >
+                  Kapat
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  }
 
   return (
     <>
