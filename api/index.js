@@ -7,6 +7,7 @@ import { dirname, join } from "path";
 const WORDS_KEY = "yerkoyce:words";
 const VOTES_KEY = "yerkoyce:votes";
 const MESSAGES_KEY = "yerkoyce:messages";
+const PM_KEY = "yerkoyce:pm";
 const USERS_KEY_PREFIX = "som:users:";
 const SESSIONS_KEY_PREFIX = "som:sessions:";
 const DEYISLER_KEY = "som:deyisler";
@@ -79,6 +80,22 @@ async function readMessages() {
 async function writeMessages(msgs) {
   const redis = getRedis();
   if (redis) await redis.set(MESSAGES_KEY, msgs);
+}
+
+async function readPM() {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const cached = await redis.get(PM_KEY);
+      if (cached) return cached;
+    } catch {}
+  }
+  return [];
+}
+
+async function writePM(msgs) {
+  const redis = getRedis();
+  if (redis) await redis.set(PM_KEY, msgs);
 }
 
 async function readLogs() {
@@ -696,7 +713,94 @@ export default async function handler(req, res) {
       return json(res, 200, { som: user.som, hak: user.hak, yagmur_tiklama: user.yagmur_tiklama, ...extra });
     }
 
-    // --- Messages ---
+    // --- Session Info ---
+    if (path.length === 1 && path[0] === "session-info" && method === "GET") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      return json(res, 200, { success: true, username });
+    }
+
+    // --- Private Messages (PM) ---
+    if (path.length === 2 && path[0] === "pm" && path[1] === "send" && method === "POST") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const { to, message } = body;
+      if (!to || !message || !message.trim()) return json(res, 400, { error: "Alıcı ve mesaj gerekli" });
+      if (username.toLowerCase() === to.toLowerCase()) return json(res, 400, { error: "Kendinize mesaj gönderemezsiniz" });
+      const receiverUser = await getUser(to);
+      if (!receiverUser) return json(res, 404, { error: `"${to}" kullanıcısı bulunamadı` });
+      const pmData = await readPM();
+      const newMsg = {
+        id: Date.now().toString(),
+        sender: username,
+        receiver: receiverUser.username || to,
+        message: message.trim().slice(0, 1000),
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+      pmData.push(newMsg);
+      if (pmData.length > 2000) pmData.length = 2000;
+      await writePM(pmData);
+      return json(res, 200, { success: true });
+    }
+
+    if (path.length === 1 && path[0] === "inbox" && method === "GET") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const pmData = await readPM();
+      const me = username.toLowerCase();
+      const convMap = {};
+      for (const msg of pmData) {
+        const s = msg.sender.toLowerCase();
+        const r = msg.receiver.toLowerCase();
+        if (s !== me && r !== me) continue;
+        const partner = s === me ? msg.receiver : msg.sender;
+        const key = partner.toLowerCase();
+        if (!convMap[key]) {
+          convMap[key] = { partner, last_id: msg.id, last_at: msg.created_at, unread_count: 0 };
+        }
+        convMap[key].last_id = msg.id;
+        convMap[key].last_at = msg.created_at;
+        if (r === me && !msg.is_read) convMap[key].unread_count++;
+      }
+      const conversations = Object.values(convMap).sort((a, b) => b.last_id.localeCompare(a.last_id));
+      return json(res, 200, { success: true, data: conversations });
+    }
+
+    if (path.length === 1 && path[0] === "unread-count" && method === "GET") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 200, { success: true, count: 0 });
+      const pmData = await readPM();
+      const me = username.toLowerCase();
+      const count = pmData.filter(m => m.receiver.toLowerCase() === me && !m.is_read).length;
+      return json(res, 200, { success: true, count });
+    }
+
+    if (path.length === 2 && path[0] === "conversation" && path[1] && method === "GET") {
+      const username = await requireAuth(req);
+      if (!username) return json(res, 401, { error: "Giris yapilmamis" });
+      const partner = decodeURIComponent(path[1]);
+      const pmData = await readPM();
+      const me = username.toLowerCase();
+      const p = partner.toLowerCase();
+      const msgs = pmData.filter(m => {
+        const s = m.sender.toLowerCase();
+        const r = m.receiver.toLowerCase();
+        return (s === me && r === p) || (s === p && r === me);
+      }).slice(-200);
+      // Okunmamışları okundu işaretle
+      let changed = false;
+      for (const m of pmData) {
+        if (m.receiver.toLowerCase() === me && m.sender.toLowerCase() === p && !m.is_read) {
+          m.is_read = true;
+          changed = true;
+        }
+      }
+      if (changed) await writePM(pmData);
+      return json(res, 200, { success: true, data: msgs });
+    }
+
+    // --- Messages (Yazar'a Mesaj) ---
     if (path.length === 1 && path[0] === "messages" && method === "POST") {
       const { text, contact } = body;
       if (!text || !text.trim()) return json(res, 400, { error: "Mesaj gerekli" });

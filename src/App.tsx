@@ -4,6 +4,7 @@ import { Hero } from "./components/Hero";
 import { DictionaryGrid } from "./components/DictionaryGrid";
 import { WordModal } from "./components/WordModal";
 import { ContactModal } from "./components/ContactModal";
+import { Mailbox } from "./components/Mailbox";
 import { SecretCode } from "./components/SecretCode";
 import { SomCuzdan } from "./components/SomCuzdan";
 import { AdminPanel } from "./admin/AdminPanel";
@@ -64,6 +65,7 @@ export default function App() {
 
       <SomCuzdan />
       <SecretCode />
+      <Mailbox />
       <ContactModal />
 
       <AnimatePresence mode="wait">

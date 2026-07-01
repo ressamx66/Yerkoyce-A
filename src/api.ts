@@ -105,6 +105,42 @@ export function fetchMessages(password: string) {
   );
 }
 
+function pmAuthHeaders(): Record<string, string> {
+  const token = sessionStorage.getItem("som_token");
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) h["Authorization"] = "Bearer " + token;
+  return h;
+}
+
+export function pmSend(to: string, message: string) {
+  return fetcher<{ success: boolean; error?: string }>("/pm/send", {
+    method: "POST",
+    headers: pmAuthHeaders(),
+    body: JSON.stringify({ to, message }),
+  });
+}
+
+export function pmInbox() {
+  return fetcher<{ success: boolean; data: { partner: string; last_id: string; last_at: string; unread_count: number }[] }>(
+    "/inbox",
+    { headers: pmAuthHeaders() }
+  );
+}
+
+export function pmUnreadCount() {
+  return fetcher<{ success: boolean; count: number }>(
+    "/unread-count",
+    { headers: pmAuthHeaders() }
+  );
+}
+
+export function pmConversation(partner: string) {
+  return fetcher<{ success: boolean; data: { id: string; sender: string; receiver: string; message: string; is_read: boolean; created_at: string }[] }>(
+    `/conversation/${encodeURIComponent(partner)}`,
+    { headers: pmAuthHeaders() }
+  );
+}
+
 export function register(username: string, password: string) {
   return fetcher<{ token: string; username: string; som: number }>("/auth/register", {
     method: "POST",
