@@ -99,6 +99,10 @@ export function MailboxPanel({ open, onClose }: { open: boolean; onClose: () => 
     return () => clearInterval(interval);
   }, [myUsername]);
 
+  useEffect(() => {
+    if (open && myUsername) loadInbox();
+  }, [open, myUsername]);
+
   async function refreshUnread() {
     try {
       const res = await fetch("/api/unread-count", {
