@@ -21,8 +21,53 @@ interface PMMessage {
   created_at: string;
 }
 
-export function Mailbox() {
-  const [open, setOpen] = useState(false);
+export function MailboxButton() {
+  const [myUsername, setMyUsername] = useState<string | null>(() => sessionStorage.getItem("som_user"));
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const sync = () => setMyUsername(sessionStorage.getItem("som_user"));
+    window.addEventListener("storage", sync);
+    const iv = setInterval(sync, 2000);
+    return () => { window.removeEventListener("storage", sync); clearInterval(iv); };
+  }, []);
+
+  useEffect(() => {
+    if (!myUsername) { setUnreadCount(0); return; }
+    const fn = async () => {
+      try {
+        const res = await fetch("/api/unread-count", {
+          headers: { Authorization: "Bearer " + sessionStorage.getItem("som_token") },
+        });
+        if (res.ok) setUnreadCount((await res.json()).count || 0);
+      } catch {}
+    };
+    fn();
+    const iv = setInterval(fn, 30000);
+    return () => clearInterval(iv);
+  }, [myUsername]);
+
+  return (
+    <button
+      onClick={() => window.dispatchEvent(new CustomEvent("toggle-mailbox"))}
+      className="relative w-14 h-14 rounded-full bg-copper/90 text-moon-cream shadow-xl hover:bg-copper hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+      title="Posta Kutusu"
+    >
+      <img
+        src={unreadCount > 0 ? pkDolu : pkBos}
+        alt="Posta Kutusu"
+        className="w-8 h-8 object-contain"
+      />
+      {unreadCount > 0 && (
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
+export function MailboxPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [myUsername, setMyUsername] = useState<string | null>(() => sessionStorage.getItem("som_user"));
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activePartner, setActivePartner] = useState<string | null>(null);
@@ -106,11 +151,6 @@ export function Mailbox() {
     } catch {}
   }
 
-  function handleOpen() {
-    setOpen(true);
-    if (myUsername) loadInbox();
-  }
-
   function handleBack() {
     if (activePartner) {
       setActivePartner(null);
@@ -118,7 +158,7 @@ export function Mailbox() {
     } else if (composeMode) {
       setComposeMode(false);
     } else {
-      setOpen(false);
+      onClose();
     }
   }
 
@@ -143,65 +183,6 @@ export function Mailbox() {
 
   if (!myUsername) {
     return (
-      <>
-        <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-24 z-40 w-14 h-14 rounded-full bg-copper/90 text-moon-cream shadow-xl hover:bg-copper hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center overflow-hidden"
-          title="Posta Kutusu"
-        >
-          <img src={pkBos} alt="Posta Kutusu" className="w-8 h-8 object-contain" />
-        </button>
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-            >
-              <motion.div
-                className="bg-[#1f1b19] border border-white/10 rounded-xl w-full max-w-md p-8 shadow-2xl text-center"
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                transition={{ duration: 0.3 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <p className="text-moon-cream/60 text-sm mb-4">Mesajlaşmak için önce SOM Cüzdan'a giriş yapmalısınız.</p>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="px-4 py-2 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/20 cursor-pointer"
-                >
-                  Kapat
-                </button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <button
-        onClick={handleOpen}
-        className="fixed bottom-6 right-24 z-40 w-14 h-14 rounded-full bg-copper/90 text-moon-cream shadow-xl hover:bg-copper hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center overflow-hidden"
-        title="Posta Kutusu"
-      >
-        <img
-          src={unreadCount > 0 ? pkDolu : pkBos}
-          alt="Posta Kutusu"
-          className="w-8 h-8 object-contain"
-        />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        )}
-      </button>
-
       <AnimatePresence>
         {open && (
           <motion.div
@@ -209,7 +190,40 @@ export function Mailbox() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
+            onClick={() => onClose()}
+          >
+            <motion.div
+              className="bg-[#1f1b19] border border-white/10 rounded-xl w-full max-w-md p-8 shadow-2xl text-center"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.3 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-moon-cream/60 text-sm mb-4">Mesajlaşmak için önce SOM Cüzdan'a giriş yapmalısınız.</p>
+              <button
+                onClick={() => onClose()}
+                className="px-4 py-2 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/20 cursor-pointer"
+              >
+                Kapat
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  return (
+    <>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => onClose()}
           >
             <motion.div
               className="bg-[#1f1b19] border border-white/10 rounded-xl w-full max-w-md h-[500px] flex flex-col shadow-2xl overflow-hidden"
@@ -243,7 +257,7 @@ export function Mailbox() {
                     </button>
                   )}
                   <button
-                    onClick={() => setOpen(false)}
+                    onClick={() => onClose()}
                     className="w-7 h-7 rounded-full border border-white/10 flex items-center justify-center text-moon-cream/50 hover:text-moon-cream cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />

@@ -4,7 +4,7 @@ import { Hero } from "./components/Hero";
 import { DictionaryGrid } from "./components/DictionaryGrid";
 import { WordModal } from "./components/WordModal";
 import { ContactModal } from "./components/ContactModal";
-import { Mailbox } from "./components/Mailbox";
+import { MailboxButton, MailboxPanel } from "./components/Mailbox";
 import { SecretCode } from "./components/SecretCode";
 import { SomCuzdan } from "./components/SomCuzdan";
 import { AdminPanel } from "./admin/AdminPanel";
@@ -17,6 +17,14 @@ export default function App() {
   const [showAdmin, setShowAdmin] = useState(() => window.location.hash === "#/admin");
   const [words, setWords] = useState<WordEntry[]>(staticWords);
   const [usingApi, setUsingApi] = useState(false);
+  const [mailboxOpen, setMailboxOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setMailboxOpen((prev) => !prev);
+    window.addEventListener("toggle-mailbox", handler);
+    return () => window.removeEventListener("toggle-mailbox", handler);
+  }, []);
 
   useEffect(() => {
     fetchWords()
@@ -65,8 +73,20 @@ export default function App() {
 
       <SomCuzdan />
       <SecretCode />
-      <Mailbox />
-      <ContactModal />
+
+      <div className="fixed bottom-6 right-6 z-40 flex gap-3">
+        <MailboxButton />
+        <button
+          onClick={() => setContactOpen(true)}
+          className="w-14 h-14 rounded-full bg-copper/90 text-moon-cream shadow-xl hover:bg-copper hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-2xl"
+          title="Yazar'a Mesaj Gönder"
+        >
+          ✉
+        </button>
+      </div>
+
+      <MailboxPanel open={mailboxOpen} onClose={() => setMailboxOpen(false)} />
+      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
 
       <AnimatePresence mode="wait">
         {selectedWord && (

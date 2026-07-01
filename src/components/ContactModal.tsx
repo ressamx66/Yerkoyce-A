@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { sendMessage } from "../api";
 
-export function ContactModal() {
-  const [open, setOpen] = useState(false);
+export function ContactModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [text, setText] = useState("");
   const [contact, setContact] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
@@ -24,14 +23,6 @@ export function ContactModal() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-copper/90 text-moon-cream shadow-xl hover:bg-copper hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-2xl"
-        title="Yazar'a Mesaj Gönder"
-      >
-        ✉
-      </button>
-
       <AnimatePresence>
         {open && (
           <motion.div
@@ -39,7 +30,7 @@ export function ContactModal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
+            onClick={() => onClose()}
           >
             <motion.div
               className="bg-[#1f1b19] border border-white/10 rounded-xl w-full max-w-md p-6 shadow-2xl"
@@ -52,7 +43,7 @@ export function ContactModal() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-serif text-xl text-moon-cream">Yazar'a Mesaj Gönder</h2>
                 <button
-                  onClick={() => { setOpen(false); setStatus("idle"); }}
+                  onClick={() => { onClose(); setStatus("idle"); }}
                   className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-moon-cream/50 hover:text-moon-cream cursor-pointer"
                 >
                   <X className="w-4 h-4" />
@@ -64,7 +55,7 @@ export function ContactModal() {
                   <p className="text-copper text-lg mb-2">✓</p>
                   <p className="text-moon-cream/80 text-sm">Mesajınız iletildi. Teşekkürler!</p>
                   <button
-                    onClick={() => { setOpen(false); setStatus("idle"); }}
+                    onClick={() => { onClose(); setStatus("idle"); }}
                     className="mt-4 px-4 py-2 border border-copper/40 text-copper text-xs rounded-sm hover:bg-copper/20 cursor-pointer"
                   >
                     Kapat
