@@ -187,9 +187,16 @@ function checkRainDailyReset(user) {
     user.kitap_sayaci = 0;
     user.saat_indirim = 0;
     user.yagmur_tiklama = 0;
+    user.yaprak_hak = 0;
     user.yagmur_gun = today;
   }
   return user;
+}
+
+function cleanupKazanilanDeyisler(user) {
+  if (!Array.isArray(user.kazanilan_deyisler)) user.kazanilan_deyisler = [];
+  const cutoff = Date.now() - YEDI_GUN_MS;
+  user.kazanilan_deyisler = user.kazanilan_deyisler.filter(d => d.time > cutoff);
 }
 
 const BASE_COUNTDOWN = 300;
@@ -445,7 +452,7 @@ export default async function handler(req, res) {
         return json(res, 400, { error: "Kullanici adi (en az 2) ve sifre (en az 3) gerekli" });
       const existing = await getUser(username);
       if (existing) return json(res, 409, { error: "Bu kullanici adi zaten var" });
-      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], madalyalar: { bronz: 0, gumus: 0, altin: 0 }, son_madalya: {}, created_at: new Date().toISOString(), yaprak_sayaci: 0, kitap_sayaci: 0, saat_indirim: 0, yagmur_tiklama: 0, yagmur_gun: "" };
+      const user = { passwordHash: hashPassword(password), som: 0, kazanilan: [], madalyalar: { bronz: 0, gumus: 0, altin: 0 }, son_madalya: {}, created_at: new Date().toISOString(), yaprak_sayaci: 0, kitap_sayaci: 0, saat_indirim: 0, yagmur_tiklama: 0, yagmur_gun: "", yaprak_hak: 0, kazanilan_deyisler: [] };
       await saveUser(username, user);
       const token = generateToken();
       const redis = getRedis();
@@ -549,6 +556,8 @@ export default async function handler(req, res) {
         yagmur_tiklama: user.yagmur_tiklama || 0,
         yagmur_aralik: user.yagmur_aralik || 0,
         ozel_gerisayim: user.ozel_gerisayim || 0,
+        yaprak_hak: user.yaprak_hak || 0,
+        kazanilan_deyisler: (user.kazanilan_deyisler || []).slice().reverse(),
         created_at: user.created_at
       });
     }
@@ -662,10 +671,12 @@ export default async function handler(req, res) {
         user.kitap_sayaci = (user.kitap_sayaci || 0) + 1;
         let deyisKazandi = false;
         let deyis = "";
-        if (user.kitap_sayaci % 10 === 0) {
+        if (user.kitap_sayaci % 3 === 0) {
           const idx = Math.floor(Math.random() * DEYIS_LIST.length);
           deyis = DEYIS_LIST[idx];
           deyisKazandi = true;
+          cleanupKazanilanDeyisler(user);
+          user.kazanilan_deyisler.push({ deyis, time: Date.now() });
         }
         extra = { kitap_sayaci: user.kitap_sayaci, deyis_kazandi: deyisKazandi, deyis };
       } else if (tur === "yaprak") {
@@ -673,6 +684,7 @@ export default async function handler(req, res) {
         let hakKazandi = false;
         if (user.yaprak_sayaci % 10 === 0) {
           user.hak = (user.hak ?? 10) + 1;
+          user.yaprak_hak = (user.yaprak_hak || 0) + 1;
           hakKazandi = true;
         }
         extra = { yaprak_sayaci: user.yaprak_sayaci, hak_kazandi: hakKazandi };
@@ -682,6 +694,30 @@ export default async function handler(req, res) {
       }
       await saveUser(username, user);
       return json(res, 200, { som: user.som, hak: user.hak, yagmur_tiklama: user.yagmur_tiklama, ...extra });
+    }
+
+    // --- Messages ---
+    if (path.length === 1 && path[0] === "messages" && method === "POST") {
+      const { text, contact } = body;
+      if (!text || !text.trim()) return json(res, 400, { error: "Mesaj gerekli" });
+      const msgs = await readMessages();
+      msgs.unshift({
+        id: Date.now().toString(),
+        text: text.trim(),
+        contact: contact || "",
+        date: new Date().toISOString()
+      });
+      if (msgs.length > 500) msgs.length = 500;
+      await writeMessages(msgs);
+      addLog("message", `Yeni mesaj: ${text.trim().slice(0, 50)}...`);
+      return json(res, 200, { success: true });
+    }
+
+    if (path.length === 1 && path[0] === "messages" && method === "GET") {
+      const pw = process.env.ADMIN_PASSWORD;
+      if (!pw) return json(res, 500, { error: "Admin sifresi ayarlanmamis" });
+      if (url.searchParams.get("password") !== pw) return json(res, 401, { error: "Yetkisiz" });
+      return json(res, 200, await readMessages());
     }
 
     return json(res, 404, { error: "Not found" });
