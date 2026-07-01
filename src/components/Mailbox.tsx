@@ -103,6 +103,25 @@ export function MailboxPanel({ open, onClose }: { open: boolean; onClose: () => 
     if (open && myUsername) loadInbox();
   }, [open, myUsername]);
 
+  const lastMsgRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open || !activePartner || !myUsername) return;
+    const poll = async () => {
+      try {
+        const data = await pmConversation(activePartner);
+        const msgs = data.data || [];
+        const lastId = msgs.length > 0 ? msgs[msgs.length - 1].id : null;
+        if (lastId && lastId !== lastMsgRef.current) {
+          setMessages(msgs);
+          lastMsgRef.current = lastId;
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+        }
+      } catch {}
+    };
+    const iv = setInterval(poll, 3000);
+    return () => { clearInterval(iv); lastMsgRef.current = null; };
+  }, [open, activePartner, myUsername]);
+
   async function refreshUnread() {
     try {
       const res = await fetch("/api/unread-count", {
@@ -126,7 +145,9 @@ export function MailboxPanel({ open, onClose }: { open: boolean; onClose: () => 
     setLoading(true);
     try {
       const data = await pmConversation(partner);
-      setMessages(data.data || []);
+      const msgs = data.data || [];
+      setMessages(msgs);
+      lastMsgRef.current = msgs.length > 0 ? msgs[msgs.length - 1].id : null;
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } catch {}
     setLoading(false);
