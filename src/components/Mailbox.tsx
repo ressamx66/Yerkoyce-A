@@ -103,6 +103,12 @@ export function MailboxPanel({ open, onClose }: { open: boolean; onClose: () => 
     if (open && myUsername) loadInbox();
   }, [open, myUsername]);
 
+  useEffect(() => {
+    if (!open || !myUsername || activePartner) return;
+    const iv = setInterval(loadInbox, 10000);
+    return () => clearInterval(iv);
+  }, [open, myUsername, activePartner]);
+
   const lastMsgRef = useRef<string | null>(null);
   useEffect(() => {
     if (!open || !activePartner || !myUsername) return;
